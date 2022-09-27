@@ -473,7 +473,7 @@ impl RangeProof {
     /// * two scalars \\(a, b\\).
     pub fn to_bytes(&self) -> Vec<u8> {
         // 7 elements: points A, S, T1, T2, scalars tx, tx_bl, e_bl.
-        let mut buf = Vec::with_capacity(7 * 32 + self.ipp_proof.serialized_size());
+        let mut buf = Vec::with_capacity(4 * 48 + 3 * 32 + self.ipp_proof.serialized_size());
         buf.extend_from_slice(&self.A.to_affine().to_compressed());
         buf.extend_from_slice(&self.S.to_affine().to_compressed());
         buf.extend_from_slice(&self.T_1.to_affine().to_compressed());
@@ -481,7 +481,7 @@ impl RangeProof {
         buf.extend_from_slice(&self.t_x.to_bytes());
         buf.extend_from_slice(&self.t_x_blinding.to_bytes());
         buf.extend_from_slice(&self.e_blinding.to_bytes());
-        buf.extend(self.ipp_proof.to_bytes_iter());
+        buf.extend_from_slice(&self.ipp_proof.to_bytes());
         buf
     }
 
@@ -489,28 +489,30 @@ impl RangeProof {
     ///
     /// Returns an error if the byte slice cannot be parsed into a `RangeProof`.
     pub fn from_bytes(slice: &[u8]) -> Result<RangeProof, ProofError> {
-        if slice.len() % 48 != 0 {
-            return Err(ProofError::FormatError);
-        }
-        if slice.len() < 7 * 48 {
+        if slice.len() < 4 * 48 + 5 * 32 {
             return Err(ProofError::FormatError);
         }
 
         use crate::util::{read32, read48};
 
-        let A = G1Affine::from_compressed(&read48(&slice[0 * 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
-        let S = G1Affine::from_compressed(&read48(&slice[1 * 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
+        let A = G1Affine::from_compressed(&read48(&slice[..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
+        let S = G1Affine::from_compressed(&read48(&slice[48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
         let T_1 = G1Affine::from_compressed(&read48(&slice[2 * 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
         let T_2 = G1Affine::from_compressed(&read48(&slice[3 * 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
 
-        let t_x = Scalar::from_bytes(&read32(&slice[4 * 32..]))
+        let mut pos = 48 * 4;
+        let t_x = Scalar::from_bytes(&read32(&slice[pos..]))
             .ok_or(ProofError::FormatError)?;
-        let t_x_blinding = Scalar::from_bytes(&read32(&slice[5 * 32..]))
+        pos += 32;
+        let t_x_blinding = Scalar::from_bytes(&read32(&slice[pos..]))
             .ok_or(ProofError::FormatError)?;
-        let e_blinding = Scalar::from_bytes(&read32(&slice[6 * 32..]))
+        pos += 32;
+        let e_blinding = Scalar::from_bytes(&read32(&slice[pos..]))
             .ok_or(ProofError::FormatError)?;
+        pos += 32;
 
-        let ipp_proof = InnerProductProof::from_bytes(&slice[7 * 32..])?;
+        println!("{}", line!());
+        let ipp_proof = InnerProductProof::from_bytes(&slice[pos..])?;
 
         Ok(RangeProof {
             A,
