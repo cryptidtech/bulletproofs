@@ -292,8 +292,8 @@ impl ScalarBatchInvert for Scalar {
 
         debug_assert!(!acc.is_zero());
 
-        let ret = acc;
         acc = acc.invert().unwrap();
+        let ret = acc;
 
         for (s, sc) in scalars.iter_mut().zip(scratch.iter()).rev() {
             let tv = *s * acc;
@@ -413,5 +413,23 @@ mod tests {
         assert_eq!(v.0, Scalar::zero());
         assert_eq!(v.1, Scalar::zero());
         assert_eq!(v.2, Scalar::zero());
+    }
+
+    #[test]
+    fn batch_invert() {
+        let mut scalars = [
+            Scalar::from(3u64),
+            Scalar::from(5u64),
+            Scalar::from(7u64),
+            Scalar::from(11u64),
+        ];
+
+        let allinv = Scalar::batch_invert(&mut scalars);
+
+        assert_eq!(allinv, Scalar::from(3*5*7*11u64).invert().unwrap());
+        assert_eq!(scalars[0], Scalar::from(3u64).invert().unwrap());
+        assert_eq!(scalars[1], Scalar::from(5u64).invert().unwrap());
+        assert_eq!(scalars[2], Scalar::from(7u64).invert().unwrap());
+        assert_eq!(scalars[3], Scalar::from(11u64).invert().unwrap());
     }
 }

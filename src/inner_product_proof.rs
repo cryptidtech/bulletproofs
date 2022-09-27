@@ -321,8 +321,6 @@ impl InnerProductProof {
         let mut buf = Vec::with_capacity(self.serialized_size());
         buf.extend_from_slice(&self.a.to_bytes());
         buf.extend_from_slice(&self.b.to_bytes());
-        println!("L_vec = {}", self.L_vec.len());
-        println!("R_vec = {}", self.R_vec.len());
         for (l, r) in self.L_vec.iter().zip(self.R_vec.iter()) {
             buf.extend_from_slice(&l.to_affine().to_compressed());
             buf.extend_from_slice(&r.to_affine().to_compressed());
@@ -373,12 +371,10 @@ impl InnerProductProof {
         let b = Scalar::from_bytes(&read32(&slice[32..]))
             .ok_or(ProofError::FormatError)?;
 
-        let mut pos = 64;
-
         let mut L_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
         let mut R_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
         for i in 0..lg_n {
-            pos = 64 + i * 48;
+            let pos = 64 + i * 96;
             L_vec.push(G1Affine::from_compressed(&read48(&slice[pos..])).map(G1Projective::from).unwrap());
             R_vec.push(G1Affine::from_compressed(&read48(&slice[pos + 48..])).map(G1Projective::from).unwrap());
         }
@@ -411,7 +407,7 @@ mod tests {
 
     use crate::util;
     use group::ff::Field;
-    use sha3::{Sha3_512, Shake256};
+    use sha3::Shake256;
 
     fn test_helper_create(n: usize) {
         let mut rng = rand::thread_rng();
