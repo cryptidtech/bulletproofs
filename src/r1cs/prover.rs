@@ -375,7 +375,7 @@ impl<'g, T: BorrowMut<Transcript>> Prover<'g, T> {
         // Clear the pending multiplier (if any) because it was committed into A_L/A_R/S.
         self.pending_multiplier = None;
 
-        if self.deferred_constraints.len() == 0 {
+        if self.deferred_constraints.is_empty() {
             self.transcript.borrow_mut().r1cs_1phase_domain_sep();
             Ok(self)
         } else {
@@ -458,8 +458,8 @@ impl<'g, T: BorrowMut<Transcript>> Prover<'g, T> {
 
         // A_I = <a_L, G> + <a_R, H> + i_blinding * B_blinding
         let A_I1_points: Vec<G1Projective> = iter::once(self.pc_gens.B_blinding)
-            .chain(gens.G(n1).map(|&p| p))
-            .chain(gens.H(n1).map(|&p| p))
+            .chain(gens.G(n1).copied())
+            .chain(gens.H(n1).copied())
             .collect();
         let A_I1_scalars: Vec<Scalar> = iter::once(i_blinding1)
             .chain(self.secrets.a_L.iter().copied())

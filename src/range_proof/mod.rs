@@ -416,9 +416,9 @@ impl RangeProof {
             .chain(self.ipp_proof.R_vec.clone().into_iter())
             .chain(iter::once(pc_gens.B_blinding))
             .chain(iter::once(pc_gens.B))
-            .chain(bp_gens.G(n, m).map(|&x| x))
-            .chain(bp_gens.H(n, m).map(|&x| x))
-            .chain(value_commitments.iter().map(|&V| V))
+            .chain(bp_gens.G(n, m).copied())
+            .chain(bp_gens.H(n, m).copied())
+            .chain(value_commitments.iter().copied())
             .collect();
         let mega_scalars: Vec<Scalar> = iter::once(Scalar::one())
             .chain(iter::once(x))
@@ -496,7 +496,7 @@ impl RangeProof {
 
         use crate::util::{read32, read48};
 
-        let A = G1Affine::from_compressed(&read48(&slice[..]))
+        let A = G1Affine::from_compressed(&read48(slice))
             .map(G1Projective::from)
             .ok_or(ProofError::FormatError)?;
         let S = G1Affine::from_compressed(&read48(&slice[48..]))

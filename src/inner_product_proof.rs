@@ -77,49 +77,49 @@ impl InnerProductProof {
         // If it's the first iteration, unroll the Hprime = H*y_inv scalar mults
         // into multiscalar muls, for performance.
         if n != 1 {
-            n = n / 2;
+            n /= 2;
             let (a_L, a_R) = a.split_at_mut(n);
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
             let (H_L, H_R) = H.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let L_scalars: Vec<Scalar> = a_L
                 .iter()
-                .zip(G_factors[n..2 * n].into_iter())
+                .zip(G_factors[n..2 * n].iter())
                 .map(|(a_L_i, g)| a_L_i * g)
                 .chain(
                     b_R.iter()
-                        .zip(H_factors[0..n].into_iter())
+                        .zip(H_factors[0..n].iter())
                         .map(|(b_R_i, h)| b_R_i * h),
                 )
                 .chain(iter::once(c_L))
                 .collect();
             let L_points: Vec<G1Projective> = G_R
                 .iter()
-                .map(|&p| p)
-                .chain(H_L.iter().map(|&p| p))
+                .copied()
+                .chain(H_L.iter().copied())
                 .chain(iter::once(*Q))
                 .collect();
             let L = G1Projective::sum_of_products(&L_points, &L_scalars);
 
             let R_scalars: Vec<Scalar> = a_R
                 .iter()
-                .zip(G_factors[0..n].into_iter())
+                .zip(G_factors[0..n].iter())
                 .map(|(a_R_i, g)| a_R_i * g)
                 .chain(
                     b_L.iter()
-                        .zip(H_factors[n..2 * n].into_iter())
+                        .zip(H_factors[n..2 * n].iter())
                         .map(|(b_L_i, h)| b_L_i * h),
                 )
                 .chain(iter::once(c_R))
                 .collect();
             let R_points: Vec<G1Projective> = G_L
                 .iter()
-                .map(|&p| p)
-                .chain(H_R.iter().map(|&p| p))
+                .copied()
+                .chain(H_R.iter().copied())
                 .chain(iter::once(*Q))
                 .collect();
             let R = G1Projective::sum_of_products(&R_points, &R_scalars);
@@ -153,39 +153,39 @@ impl InnerProductProof {
         }
 
         while n != 1 {
-            n = n / 2;
+            n /= 2;
             let (a_L, a_R) = a.split_at_mut(n);
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
             let (H_L, H_R) = H.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let L_points: Vec<G1Projective> = G_R
                 .iter()
-                .map(|&p| p)
-                .chain(H_L.iter().map(|&p| p))
+                .copied()
+                .chain(H_L.iter().copied())
                 .chain(iter::once(*Q))
                 .collect();
             let L_scalars: Vec<Scalar> = a_L
                 .iter()
-                .map(|&s| s)
-                .chain(b_R.iter().map(|&s| s))
+                .copied()
+                .chain(b_R.iter().copied())
                 .chain(iter::once(c_L))
                 .collect();
             let L = G1Projective::sum_of_products(&L_points, &L_scalars);
 
             let R_points: Vec<G1Projective> = G_L
                 .iter()
-                .map(|&p| p)
-                .chain(H_R.iter().map(|&p| p))
+                .copied()
+                .chain(H_R.iter().copied())
                 .chain(iter::once(*Q))
                 .collect();
             let R_scalars: Vec<Scalar> = a_R
                 .iter()
-                .map(|&s| s)
-                .chain(b_L.iter().map(|&s| s))
+                .copied()
+                .chain(b_L.iter().copied())
                 .chain(iter::once(c_R))
                 .collect();
             let R = G1Projective::sum_of_products(&R_points, &R_scalars);
@@ -322,10 +322,10 @@ impl InnerProductProof {
         let neg_u_inv_sq = u_inv_sq.iter().map(|ui| -ui);
 
         let P_points: Vec<G1Projective> = iter::once(*Q)
-            .chain(G.iter().map(|&p| p))
-            .chain(H.iter().map(|&p| p))
-            .chain(self.L_vec.iter().map(|&p| p))
-            .chain(self.R_vec.iter().map(|&p| p))
+            .chain(G.iter().copied())
+            .chain(H.iter().copied())
+            .chain(self.L_vec.iter().copied())
+            .chain(self.R_vec.iter().copied())
             .collect();
         let P_scalars: Vec<Scalar> = iter::once(self.a * self.b)
             .chain(g_times_a_times_s)
@@ -405,7 +405,7 @@ impl InnerProductProof {
 
         use crate::util::{read32, read48};
 
-        let a = Scalar::from_bytes(&read32(&slice[..])).ok_or(ProofError::FormatError)?;
+        let a = Scalar::from_bytes(&read32(slice)).ok_or(ProofError::FormatError)?;
         let b = Scalar::from_bytes(&read32(&slice[32..])).ok_or(ProofError::FormatError)?;
 
         let mut L_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
