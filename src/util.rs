@@ -5,8 +5,9 @@ extern crate alloc;
 
 use alloc::vec;
 use alloc::vec::Vec;
-use clear_on_drop::clear::Clear;
-use curve25519_dalek::scalar::Scalar;
+use bls12_381_plus::Scalar;
+use group::ff::Field;
+use zeroize::Zeroize;
 
 use crate::inner_product_proof::inner_product;
 
@@ -170,19 +171,19 @@ impl Poly6 {
 impl Drop for VecPoly1 {
     fn drop(&mut self) {
         for e in self.0.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
         for e in self.1.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
     }
 }
 
 impl Drop for Poly2 {
     fn drop(&mut self) {
-        self.0.clear();
-        self.1.clear();
-        self.2.clear();
+        self.0.zeroize();
+        self.1.zeroize();
+        self.2.zeroize();
     }
 }
 
@@ -190,16 +191,16 @@ impl Drop for Poly2 {
 impl Drop for VecPoly3 {
     fn drop(&mut self) {
         for e in self.0.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
         for e in self.1.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
         for e in self.2.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
         for e in self.3.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
     }
 }
@@ -207,12 +208,12 @@ impl Drop for VecPoly3 {
 #[cfg(feature = "yoloproofs")]
 impl Drop for Poly6 {
     fn drop(&mut self) {
-        self.t1.clear();
-        self.t2.clear();
-        self.t3.clear();
-        self.t4.clear();
-        self.t5.clear();
-        self.t6.clear();
+        self.t1.zeroize();
+        self.t2.zeroize();
+        self.t3.zeroize();
+        self.t4.zeroize();
+        self.t5.zeroize();
+        self.t6.zeroize();
     }
 }
 
@@ -267,6 +268,43 @@ pub fn read32(data: &[u8]) -> [u8; 32] {
     buf32
 }
 
+pub fn read48(data: &[u8]) -> [u8; 48] {
+    let mut buf48 = [0u8; 48];
+    buf48.copy_from_slice(&data[..48]);
+    buf48
+}
+
+pub trait ScalarBatchInvert {
+    fn batch_invert(scalars: &mut [Scalar]) -> Scalar;
+}
+
+impl ScalarBatchInvert for Scalar {
+    fn batch_invert(scalars: &mut [Scalar]) -> Scalar {
+        let n = scalars.len();
+
+        let mut acc = Scalar::one();
+        let mut scratch = vec![Scalar::one(); n];
+
+        for (s, sc) in scalars.iter().zip(scratch.iter_mut()) {
+            *sc = acc;
+            acc *= s;
+        }
+
+        debug_assert!(!acc.is_zero());
+
+        let ret = acc;
+        acc = acc.invert().unwrap();
+
+        for (s, sc) in scalars.iter_mut().zip(scratch.iter()).rev() {
+            let tv = *s * acc;
+            *s = sc * acc;
+            acc = tv;
+        }
+
+        ret
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -308,24 +346,6 @@ mod tests {
     }
 
     #[test]
-    fn test_scalar_exp() {
-        let x = Scalar::from_bits(
-            *b"\x84\xfc\xbcOx\x12\xa0\x06\xd7\x91\xd9z:'\xdd\x1e!CE\xf7\xb1\xb9Vz\x810sD\x96\x85\xb5\x07",
-        );
-        assert_eq!(scalar_exp_vartime(&x, 0), Scalar::one());
-        assert_eq!(scalar_exp_vartime(&x, 1), x);
-        assert_eq!(scalar_exp_vartime(&x, 2), x * x);
-        assert_eq!(scalar_exp_vartime(&x, 3), x * x * x);
-        assert_eq!(scalar_exp_vartime(&x, 4), x * x * x * x);
-        assert_eq!(scalar_exp_vartime(&x, 5), x * x * x * x * x);
-        assert_eq!(scalar_exp_vartime(&x, 64), scalar_exp_vartime_slow(&x, 64));
-        assert_eq!(
-            scalar_exp_vartime(&x, 0b11001010),
-            scalar_exp_vartime_slow(&x, 0b11001010)
-        );
-    }
-
-    #[test]
     fn test_sum_of_powers() {
         let x = Scalar::from(10u64);
         assert_eq!(sum_of_powers_slow(&x, 0), sum_of_powers(&x, 0));
@@ -355,7 +375,7 @@ mod tests {
         let mut v = vec![Scalar::from(24u64), Scalar::from(42u64)];
 
         for e in v.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
 
         fn flat_slice<T>(x: &[T]) -> &[u8] {
@@ -378,9 +398,9 @@ mod tests {
             Scalar::from(255u64),
         );
 
-        v.0.clear();
-        v.1.clear();
-        v.2.clear();
+        v.0.zeroize();
+        v.1.zeroize();
+        v.2.zeroize();
 
         fn as_bytes<T>(x: &T) -> &[u8] {
             use core::mem;

@@ -13,12 +13,11 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use clear_on_drop::clear::Clear;
 use core::iter;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::MultiscalarMul;
+use bls12_381_plus::{G1Projective, Scalar};
+use group::ff::Field;
 use rand_core::{CryptoRng, RngCore};
+use zeroize::Zeroize;
 
 use crate::errors::MPCError;
 use crate::generators::{BulletproofGens, PedersenGens};
@@ -48,7 +47,7 @@ impl Party {
             return Err(MPCError::InvalidGeneratorsLength);
         }
 
-        let V = pc_gens.commit(v.into(), v_blinding).compress();
+        let V = pc_gens.commit(v.into(), v_blinding);
 
         Ok(PartyAwaitingPosition {
             bp_gens,
@@ -68,7 +67,7 @@ pub struct PartyAwaitingPosition<'a> {
     n: usize,
     v: u64,
     v_blinding: Scalar,
-    V: CompressedRistretto,
+    V: G1Projective,
 }
 
 impl<'a> PartyAwaitingPosition<'a> {
@@ -84,10 +83,10 @@ impl<'a> PartyAwaitingPosition<'a> {
 
     /// Assigns a position in the aggregated proof to this party,
     /// allowing the party to commit to the bits of their value.
-    pub fn assign_position_with_rng<T: RngCore + CryptoRng>(
+    pub fn assign_position_with_rng(
         self,
         j: usize,
-        rng: &mut T,
+        mut rng: impl RngCore + CryptoRng,
     ) -> Result<(PartyAwaitingBitChallenge<'a>, BitCommitment), MPCError> {
         if self.bp_gens.party_capacity <= j {
             return Err(MPCError::InvalidGeneratorsLength);
@@ -95,7 +94,7 @@ impl<'a> PartyAwaitingPosition<'a> {
 
         let bp_share = self.bp_gens.share(j);
 
-        let a_blinding = Scalar::random(rng);
+        let a_blinding = Scalar::random(&mut rng);
         // Compute A = <a_L, G> + <a_R, H> + a_blinding * B_blinding
         let mut A = self.pc_gens.B_blinding * a_blinding;
 
@@ -111,17 +110,17 @@ impl<'a> PartyAwaitingPosition<'a> {
             i += 1;
         }
 
-        let s_blinding = Scalar::random(rng);
-        let s_L: Vec<Scalar> = (0..self.n).map(|_| Scalar::random(rng)).collect();
-        let s_R: Vec<Scalar> = (0..self.n).map(|_| Scalar::random(rng)).collect();
+        let s_blinding = Scalar::random(&mut rng);
+        let s_L: Vec<Scalar> = (0..self.n).map(|_| Scalar::random(&mut rng)).collect();
+        let s_R: Vec<Scalar> = (0..self.n).map(|_| Scalar::random(&mut rng)).collect();
 
         // Compute S = <s_L, G> + <s_R, H> + s_blinding * B_blinding
-        let S = RistrettoPoint::multiscalar_mul(
-            iter::once(&s_blinding).chain(s_L.iter()).chain(s_R.iter()),
-            iter::once(&self.pc_gens.B_blinding)
-                .chain(bp_share.G(self.n))
-                .chain(bp_share.H(self.n)),
-        );
+        let S_points: Vec<G1Projective> =
+            iter::once(self.pc_gens.B_blinding)
+                .chain(bp_share.G(self.n).map(|&p| p))
+                .chain(bp_share.H(self.n).map(|&p| p)).collect();
+        let S_scalars: Vec<Scalar> = iter::once(s_blinding).chain(s_L.clone().into_iter()).chain(s_R.clone().into_iter()).collect();
+        let S = G1Projective::sum_of_products(&S_points, &S_scalars);
 
         // Return next state and all commitments
         let bit_commitment = BitCommitment {
@@ -147,8 +146,8 @@ impl<'a> PartyAwaitingPosition<'a> {
 /// Overwrite secrets with null bytes when they go out of scope.
 impl<'a> Drop for PartyAwaitingPosition<'a> {
     fn drop(&mut self) {
-        self.v.clear();
-        self.v_blinding.clear();
+        self.v.zeroize();
+        self.v_blinding.zeroize();
     }
 }
 
@@ -179,10 +178,10 @@ impl<'a> PartyAwaitingBitChallenge<'a> {
 
     /// Receive a [`BitChallenge`] from the dealer and use it to
     /// compute commitments to the party's polynomial coefficients.
-    pub fn apply_challenge_with_rng<T: RngCore + CryptoRng>(
+    pub fn apply_challenge_with_rng(
         self,
         vc: &BitChallenge,
-        rng: &mut T,
+        mut rng: impl RngCore + CryptoRng,
     ) -> (PartyAwaitingPolyChallenge, PolyCommitment) {
         let n = self.n;
         let offset_y = util::scalar_exp_vartime(&vc.y, (self.j * n) as u64);
@@ -211,8 +210,8 @@ impl<'a> PartyAwaitingBitChallenge<'a> {
         let t_poly = l_poly.inner_product(&r_poly);
 
         // Generate x by committing to T_1, T_2 (line 49-54)
-        let t_1_blinding = Scalar::random(rng);
-        let t_2_blinding = Scalar::random(rng);
+        let t_1_blinding = Scalar::random(&mut rng);
+        let t_2_blinding = Scalar::random(&mut rng);
         let T_1 = self.pc_gens.commit(t_poly.1, t_1_blinding);
         let T_2 = self.pc_gens.commit(t_poly.2, t_2_blinding);
 
@@ -240,21 +239,16 @@ impl<'a> PartyAwaitingBitChallenge<'a> {
 /// Overwrite secrets with null bytes when they go out of scope.
 impl<'a> Drop for PartyAwaitingBitChallenge<'a> {
     fn drop(&mut self) {
-        self.v.clear();
-        self.v_blinding.clear();
-        self.a_blinding.clear();
-        self.s_blinding.clear();
+        self.v.zeroize();
+        self.v_blinding.zeroize();
+        self.a_blinding.zeroize();
+        self.s_blinding.zeroize();
 
-        // Important: due to how ClearOnDrop auto-implements InitializableFromZeroed
-        // for T: Default, calling .clear() on Vec compiles, but does not
-        // clear the content. Instead, it only clears the Vec's header.
-        // Clearing the underlying buffer item-by-item will do the job, but will
-        // keep the header as-is, which is fine since the header does not contain secrets.
         for e in self.s_L.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
         for e in self.s_R.iter_mut() {
-            e.clear();
+            e.zeroize();
         }
     }
 }
@@ -308,13 +302,10 @@ impl PartyAwaitingPolyChallenge {
 /// Overwrite secrets with null bytes when they go out of scope.
 impl Drop for PartyAwaitingPolyChallenge {
     fn drop(&mut self) {
-        self.v_blinding.clear();
-        self.a_blinding.clear();
-        self.s_blinding.clear();
-        self.t_1_blinding.clear();
-        self.t_2_blinding.clear();
-
-        // Note: polynomials r_poly, l_poly and t_poly
-        // are cleared within their own Drop impls.
+        self.v_blinding.zeroize();
+        self.a_blinding.zeroize();
+        self.s_blinding.zeroize();
+        self.t_1_blinding.zeroize();
+        self.t_2_blinding.zeroize();
     }
 }

@@ -9,9 +9,6 @@
 
 extern crate alloc;
 
-#[macro_use]
-extern crate serde_derive;
-
 mod util;
 
 #[cfg_attr(feature = "docs", doc(include = "../docs/notes-intro.md"))]
@@ -31,10 +28,37 @@ mod linear_proof;
 mod range_proof;
 mod transcript;
 
+use subtle::Choice;
 pub use crate::errors::ProofError;
 pub use crate::generators::{BulletproofGens, BulletproofGensShare, PedersenGens};
 pub use crate::linear_proof::LinearProof;
 pub use crate::range_proof::RangeProof;
+
+const HASH_DST: &[u8] = b"BLS12381G1_XOF:SHAKE-256_SSWU_RO_";
+
+trait CtOptionOps<T> {
+    fn ok_or<E>(self, err: E) -> Result<T, E>;
+}
+
+impl<T> CtOptionOps<T> for subtle::CtOption<T> {
+    fn ok_or<E>(self, err: E) -> Result<T, E> {
+        if self.is_some().unwrap_u8() == 1u8 {
+            Ok(self.unwrap())
+        } else {
+            Err(err)
+        }
+    }
+}
+
+impl CtOptionOps<()> for Choice {
+    fn ok_or<E>(self, err: E) -> Result<(), E> {
+        if self.unwrap_u8() == 1u8 {
+            Ok(())
+        } else {
+            Err(err)
+        }
+    }
+}
 
 #[cfg_attr(feature = "docs", doc(include = "../docs/aggregation-api.md"))]
 pub mod range_proof_mpc {
