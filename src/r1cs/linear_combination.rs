@@ -106,15 +106,9 @@ impl Mul<Variable> for Scalar {
 /// Represents a linear combination of
 /// [`Variables`](::r1cs::Variable).  Each term is represented by a
 /// `(Variable, Scalar)` pair.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct LinearCombination {
     pub(super) terms: Vec<(Variable, Scalar)>,
-}
-
-impl Default for LinearCombination {
-    fn default() -> Self {
-        LinearCombination { terms: Vec::new() }
-    }
 }
 
 impl FromIterator<(Variable, Scalar)> for LinearCombination {

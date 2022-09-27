@@ -88,18 +88,29 @@ impl LinearProof {
         let mut a = &mut a_vec[..];
         let mut b = &mut b_vec[..];
 
+        // All of the input vectors must have the same length.
+        assert_eq!(G.len(), n);
+        assert_eq!(a.len(), n);
+        assert_eq!(b.len(), n);
+
+        // All of the input vectors must have a length that is a power of two.
+        assert!(n.is_power_of_two());
+
+        transcript.innerproduct_domain_sep(n as u64);
+        transcript.append_point(b"C", C);
+
         let lg_n = n.next_power_of_two().trailing_zeros() as usize;
         let mut L_vec = Vec::with_capacity(lg_n);
         let mut R_vec = Vec::with_capacity(lg_n);
 
         while n != 1 {
-            n = n / 2;
+            n /= 2;
             let (a_L, a_R) = a.split_at_mut(n);
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let s_j = Scalar::random(&mut rng);
             let t_j = Scalar::random(&mut rng);
@@ -107,13 +118,13 @@ impl LinearProof {
             // L = a_L * G_R + s_j * B + c_L * F
             let L_points: Vec<G1Projective> = G_R
                 .iter()
-                .map(|&p| p)
+                .copied()
                 .chain(iter::once(*B))
                 .chain(iter::once(*F))
                 .collect();
             let L_scalars: Vec<Scalar> = a_L
                 .iter()
-                .map(|&s| s)
+                .copied()
                 .chain(iter::once(s_j))
                 .chain(iter::once(c_L))
                 .collect();
@@ -122,13 +133,13 @@ impl LinearProof {
             // R = a_R * G_L + t_j * B + c_R * F
             let R_points: Vec<G1Projective> = G_L
                 .iter()
-                .map(|&p| p)
+                .copied()
                 .chain(iter::once(*B))
                 .chain(iter::once(*F))
                 .collect();
             let R_scalars: Vec<Scalar> = a_R
                 .iter()
-                .map(|&s| s)
+                .copied()
                 .chain(iter::once(t_j))
                 .chain(iter::once(c_R))
                 .collect();
@@ -145,9 +156,9 @@ impl LinearProof {
 
             for i in 0..n {
                 // a_L = a_L + x_j^{-1} * a_R
-                a_L[i] = a_L[i] + x_j_inv * a_R[i];
+                a_L[i] += x_j_inv * a_R[i];
                 // b_L = b_L + x_j * b_R
-                b_L[i] = b_L[i] + x_j * b_R[i];
+                b_L[i] += x_j * b_R[i];
                 // G_L = G_L + x_j * G_R
                 G_L[i] = G1Projective::sum_of_products(&[G_L[i], G_R[i]], &[Scalar::one(), x_j]);
             }
@@ -217,12 +228,12 @@ impl LinearProof {
         let L_R_points: Vec<G1Projective> = self
             .L_vec
             .iter()
-            .map(|&p| p)
-            .chain(self.R_vec.iter().map(|&p| p))
+            .copied()
+            .chain(self.R_vec.iter().copied())
             .collect();
         let L_R_scalars: Vec<Scalar> = x_vec
             .iter()
-            .map(|&s| s)
+            .copied()
             .chain(x_inv_vec.into_iter())
             .collect();
         let L_R_factors = G1Projective::sum_of_products(&L_R_points, &L_R_scalars);
@@ -230,7 +241,7 @@ impl LinearProof {
         // This is an optimized way to compute the base case G (G_0 in the paper):
         // G_0 = sum_{i=0}^{2^{l-1}} (x<i> * G_i)
         let s = self.subset_product(n, x_vec);
-        let G_0 = G1Projective::sum_of_products(&G, &s);
+        let G_0 = G1Projective::sum_of_products(G, &s);
 
         // This matches the verification equation:
         // S == r_star * B + a_star * b_0 * F
@@ -279,10 +290,10 @@ impl LinearProof {
             transcript.validate_and_append_point(b"R", R)?;
             let x_j = transcript.challenge_scalar(b"x_j");
             challenges.push(x_j);
-            n_mut = n_mut / 2;
+            n_mut /= 2;
             let (b_L, b_R) = b.split_at_mut(n_mut);
             for i in 0..n_mut {
-                b_L[i] = b_L[i] + x_j * b_R[i];
+                b_L[i] += x_j * b_R[i];
             }
             b = b_L;
         }
@@ -389,7 +400,7 @@ impl LinearProof {
 
         use crate::util::{read32, read48};
 
-        let a = Scalar::from_bytes(&read32(&slice[..])).ok_or(ProofError::FormatError)?;
+        let a = Scalar::from_bytes(&read32(slice)).ok_or(ProofError::FormatError)?;
         let r = Scalar::from_bytes(&read32(&slice[32..])).ok_or(ProofError::FormatError)?;
         let S = G1Affine::from_compressed(&read48(&slice[64..]))
             .map(G1Projective::from)
