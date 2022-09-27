@@ -6,6 +6,7 @@ use super::CtOptionOps;
 use alloc::vec::Vec;
 
 use core::iter;
+use std::sync::mpsc::channel;
 use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use group::{ff::Field, Curve};
 use merlin::Transcript;
@@ -297,7 +298,7 @@ impl LinearProof {
     /// For vectors of length `n` the proof size is
     /// \\(32 \cdot (2\lg n+3)\\) bytes.
     pub fn serialized_size(&self) -> usize {
-        (self.L_vec.len() * 2 + 3) * 32
+        (self.L_vec.len() * 2 + 1)  * 48 + 64
     }
 
     /// Serializes the proof into a byte array of \\(2n+3\\) 32-byte elements.
@@ -307,13 +308,13 @@ impl LinearProof {
     /// * two scalars \\(a, r\\).
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(self.serialized_size());
+        buf.extend_from_slice(&self.a.to_bytes());
+        buf.extend_from_slice(&self.r.to_bytes());
+        buf.extend_from_slice(&self.S.to_affine().to_compressed());
         for (l, r) in self.L_vec.iter().zip(self.R_vec.iter()) {
             buf.extend_from_slice(&l.to_affine().to_compressed());
             buf.extend_from_slice(&r.to_affine().to_compressed());
         }
-        buf.extend_from_slice(&self.S.to_affine().to_compressed());
-        buf.extend_from_slice(&self.a.to_bytes());
-        buf.extend_from_slice(&self.r.to_bytes());
         buf
     }
 
@@ -325,13 +326,13 @@ impl LinearProof {
     #[inline]
     #[allow(dead_code)]
     pub(crate) fn to_bytes_iter(&self) -> impl Iterator<Item = u8> + '_ {
-        self.L_vec
+        self.a.to_bytes().into_iter()
+            .chain(self.r.to_bytes().into_iter())
+            .chain(self.S.to_affine().to_compressed().into_iter())
+            .chain(self.L_vec
             .iter()
             .zip(self.R_vec.iter())
-            .flat_map(|(l, r)| l.to_affine().to_compressed().into_iter().chain(r.to_affine().to_compressed().into_iter()))
-            .chain(self.S.to_affine().to_compressed().into_iter())
-            .chain(self.a.to_bytes().into_iter())
-            .chain(self.r.to_bytes().into_iter())
+            .flat_map(|(l, r)| l.to_affine().to_compressed().into_iter().chain(r.to_affine().to_compressed().into_iter())))
     }
 
     /// Deserializes the proof from a byte slice.
@@ -341,11 +342,11 @@ impl LinearProof {
     /// * any of \\(2n + 1\\) points are not valid compressed Ristretto points,
     /// * any of 2 scalars are not canonical scalars modulo Ristretto group order.
     pub fn from_bytes(slice: &[u8]) -> Result<LinearProof, ProofError> {
-        let b = slice.len();
+        let b = slice.len() - 64;
         if b % 48 != 0 {
             return Err(ProofError::FormatError);
         }
-        let num_elements = b / 32;
+        let num_elements = b / 48 + 2;
         if num_elements < 3 {
             return Err(ProofError::FormatError);
         }
@@ -353,26 +354,25 @@ impl LinearProof {
             return Err(ProofError::FormatError);
         }
         let lg_n = (num_elements - 3) / 2;
-        if lg_n >= 32 {
+        if lg_n >= 48 {
             return Err(ProofError::FormatError);
         }
 
         use crate::util::{read48, read32};
 
+        let a = Scalar::from_bytes(&read32(&slice[..]))
+            .ok_or(ProofError::FormatError)?;
+        let r = Scalar::from_bytes(&read32(&slice[32..]))
+            .ok_or(ProofError::FormatError)?;
+        let S = G1Affine::from_compressed(&read48(&slice[64..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
+
         let mut L_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
         let mut R_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
         for i in 0..lg_n {
-            let pos = 2 * i * 48;
+            let pos = 112 + i * 96;
             L_vec.push(G1Affine::from_compressed(&read48(&slice[pos..])).map(G1Projective::from).ok_or(ProofError::FormatError)?);
             R_vec.push(G1Affine::from_compressed(&read48(&slice[pos + 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?);
         }
-
-        let pos = 2 * lg_n * 48;
-        let S = G1Affine::from_compressed(&read48(&slice[pos..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
-        let a = Scalar::from_bytes(&read32(&slice[pos + 48..]))
-            .ok_or(ProofError::FormatError)?;
-        let r = Scalar::from_bytes(&read32(&slice[pos + 80..]))
-            .ok_or(ProofError::FormatError)?;
 
         Ok(LinearProof {
             L_vec,

@@ -334,12 +334,12 @@ impl InnerProductProof {
     /// * two scalars \\(a, b\\).
     #[inline]
     pub(crate) fn to_bytes_iter(&self) -> impl Iterator<Item = u8> + '_ {
-        self.L_vec
+        self.a.to_bytes().into_iter()
+            .chain(self.b.to_bytes().into_iter())
+            .chain(self.L_vec
             .iter()
             .zip(self.R_vec.iter())
-            .flat_map(|(l, r)| l.to_affine().to_compressed().into_iter().chain(r.to_affine().to_compressed().into_iter()))
-            .chain(self.a.to_bytes().into_iter())
-            .chain(self.b.to_bytes().into_iter())
+            .flat_map(|(l, r)| l.to_affine().to_compressed().into_iter().chain(r.to_affine().to_compressed().into_iter())))
     }
 
     /// Deserializes the proof from a byte slice.
