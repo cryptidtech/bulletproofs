@@ -13,8 +13,8 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use core::iter;
 use bls12_381_plus::{G1Projective, Scalar};
+use core::iter;
 use group::ff::Field;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
@@ -115,11 +115,14 @@ impl<'a> PartyAwaitingPosition<'a> {
         let s_R: Vec<Scalar> = (0..self.n).map(|_| Scalar::random(&mut rng)).collect();
 
         // Compute S = <s_L, G> + <s_R, H> + s_blinding * B_blinding
-        let S_points: Vec<G1Projective> =
-            iter::once(self.pc_gens.B_blinding)
-                .chain(bp_share.G(self.n).map(|&p| p))
-                .chain(bp_share.H(self.n).map(|&p| p)).collect();
-        let S_scalars: Vec<Scalar> = iter::once(s_blinding).chain(s_L.clone().into_iter()).chain(s_R.clone().into_iter()).collect();
+        let S_points: Vec<G1Projective> = iter::once(self.pc_gens.B_blinding)
+            .chain(bp_share.G(self.n).map(|&p| p))
+            .chain(bp_share.H(self.n).map(|&p| p))
+            .collect();
+        let S_scalars: Vec<Scalar> = iter::once(s_blinding)
+            .chain(s_L.clone().into_iter())
+            .chain(s_R.clone().into_iter())
+            .collect();
         let S = G1Projective::sum_of_products(&S_points, &S_scalars);
 
         // Return next state and all commitments

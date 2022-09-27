@@ -77,7 +77,6 @@ impl TranscriptProtocol for Transcript {
         label: &'static [u8],
         point: &G1Projective,
     ) -> Result<(), ProofError> {
-
         if point.is_identity().unwrap_u8() == 1u8 {
             Err(ProofError::VerificationError)
         } else {

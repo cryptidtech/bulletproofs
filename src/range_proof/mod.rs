@@ -5,7 +5,6 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate rand;
 
-
 use super::CtOptionOps;
 
 #[cfg(feature = "std")]
@@ -409,33 +408,35 @@ impl RangeProof {
         let value_commitment_scalars = util::exp_iter(z).take(m).map(|z_exp| c * zz * z_exp);
         let basepoint_scalar = w * (self.t_x - a * b) + c * (delta(n, m, &y, &z) - self.t_x);
 
-        let mega_points: Vec<G1Projective> =
-            iter::once(self.A)
-                .chain(iter::once(self.S))
-                .chain(iter::once(self.T_1))
-                .chain(iter::once(self.T_2))
-                .chain(self.ipp_proof.L_vec.clone().into_iter())
-                .chain(self.ipp_proof.R_vec.clone().into_iter())
-                .chain(iter::once(pc_gens.B_blinding))
-                .chain(iter::once(pc_gens.B))
-                .chain(bp_gens.G(n, m).map(|&x| x))
-                .chain(bp_gens.H(n, m).map(|&x| x))
-                .chain(value_commitments.iter().map(|&V| V)).collect();
-        let mega_scalars: Vec<Scalar> =
-            iter::once(Scalar::one())
-                .chain(iter::once(x))
-                .chain(iter::once(c * x))
-                .chain(iter::once(c * x * x))
-                .chain(x_sq.iter().cloned())
-                .chain(x_inv_sq.iter().cloned())
-                .chain(iter::once(-self.e_blinding - c * self.t_x_blinding))
-                .chain(iter::once(basepoint_scalar))
-                .chain(g)
-                .chain(h)
-                .chain(value_commitment_scalars).collect();
+        let mega_points: Vec<G1Projective> = iter::once(self.A)
+            .chain(iter::once(self.S))
+            .chain(iter::once(self.T_1))
+            .chain(iter::once(self.T_2))
+            .chain(self.ipp_proof.L_vec.clone().into_iter())
+            .chain(self.ipp_proof.R_vec.clone().into_iter())
+            .chain(iter::once(pc_gens.B_blinding))
+            .chain(iter::once(pc_gens.B))
+            .chain(bp_gens.G(n, m).map(|&x| x))
+            .chain(bp_gens.H(n, m).map(|&x| x))
+            .chain(value_commitments.iter().map(|&V| V))
+            .collect();
+        let mega_scalars: Vec<Scalar> = iter::once(Scalar::one())
+            .chain(iter::once(x))
+            .chain(iter::once(c * x))
+            .chain(iter::once(c * x * x))
+            .chain(x_sq.iter().cloned())
+            .chain(x_inv_sq.iter().cloned())
+            .chain(iter::once(-self.e_blinding - c * self.t_x_blinding))
+            .chain(iter::once(basepoint_scalar))
+            .chain(g)
+            .chain(h)
+            .chain(value_commitment_scalars)
+            .collect();
         let mega_check = G1Projective::sum_of_products(&mega_points, &mega_scalars);
 
-        mega_check.is_identity().ok_or(ProofError::VerificationError)
+        mega_check
+            .is_identity()
+            .ok_or(ProofError::VerificationError)
     }
 
     /// Verifies an aggregated range proof for the given value commitments.
@@ -495,20 +496,27 @@ impl RangeProof {
 
         use crate::util::{read32, read48};
 
-        let A = G1Affine::from_compressed(&read48(&slice[..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
-        let S = G1Affine::from_compressed(&read48(&slice[48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
-        let T_1 = G1Affine::from_compressed(&read48(&slice[2 * 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
-        let T_2 = G1Affine::from_compressed(&read48(&slice[3 * 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
+        let A = G1Affine::from_compressed(&read48(&slice[..]))
+            .map(G1Projective::from)
+            .ok_or(ProofError::FormatError)?;
+        let S = G1Affine::from_compressed(&read48(&slice[48..]))
+            .map(G1Projective::from)
+            .ok_or(ProofError::FormatError)?;
+        let T_1 = G1Affine::from_compressed(&read48(&slice[2 * 48..]))
+            .map(G1Projective::from)
+            .ok_or(ProofError::FormatError)?;
+        let T_2 = G1Affine::from_compressed(&read48(&slice[3 * 48..]))
+            .map(G1Projective::from)
+            .ok_or(ProofError::FormatError)?;
 
         let mut pos = 48 * 4;
-        let t_x = Scalar::from_bytes(&read32(&slice[pos..]))
-            .ok_or(ProofError::FormatError)?;
+        let t_x = Scalar::from_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
         pos += 32;
-        let t_x_blinding = Scalar::from_bytes(&read32(&slice[pos..]))
-            .ok_or(ProofError::FormatError)?;
+        let t_x_blinding =
+            Scalar::from_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
         pos += 32;
-        let e_blinding = Scalar::from_bytes(&read32(&slice[pos..]))
-            .ok_or(ProofError::FormatError)?;
+        let e_blinding =
+            Scalar::from_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
         pos += 32;
 
         println!("{}", line!());

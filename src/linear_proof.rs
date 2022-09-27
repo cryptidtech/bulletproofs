@@ -5,9 +5,8 @@ extern crate alloc;
 use super::CtOptionOps;
 use alloc::vec::Vec;
 
-use core::iter;
-use std::sync::mpsc::channel;
 use bls12_381_plus::{G1Affine, G1Projective, Scalar};
+use core::iter;
 use group::{ff::Field, Curve};
 use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};
@@ -106,13 +105,33 @@ impl LinearProof {
             let t_j = Scalar::random(&mut rng);
 
             // L = a_L * G_R + s_j * B + c_L * F
-            let L_points: Vec<G1Projective> = G_R.iter().map(|&p| p).chain(iter::once(*B)).chain(iter::once(*F)).collect();
-            let L_scalars: Vec<Scalar> = a_L.iter().map(|&s| s).chain(iter::once(s_j)).chain(iter::once(c_L)).collect();
+            let L_points: Vec<G1Projective> = G_R
+                .iter()
+                .map(|&p| p)
+                .chain(iter::once(*B))
+                .chain(iter::once(*F))
+                .collect();
+            let L_scalars: Vec<Scalar> = a_L
+                .iter()
+                .map(|&s| s)
+                .chain(iter::once(s_j))
+                .chain(iter::once(c_L))
+                .collect();
             let L = G1Projective::sum_of_products(&L_points, &L_scalars);
 
             // R = a_R * G_L + t_j * B + c_R * F
-            let R_points: Vec<G1Projective> = G_L.iter().map(|&p| p).chain(iter::once(*B)).chain(iter::once(*F)).collect();
-            let R_scalars: Vec<Scalar> = a_R.iter().map(|&s| s).chain(iter::once(t_j)).chain(iter::once(c_R)).collect();
+            let R_points: Vec<G1Projective> = G_L
+                .iter()
+                .map(|&p| p)
+                .chain(iter::once(*B))
+                .chain(iter::once(*F))
+                .collect();
+            let R_scalars: Vec<Scalar> = a_R
+                .iter()
+                .map(|&s| s)
+                .chain(iter::once(t_j))
+                .chain(iter::once(c_R))
+                .collect();
             let R = G1Projective::sum_of_products(&R_points, &R_scalars);
 
             L_vec.push(L);
@@ -130,10 +149,7 @@ impl LinearProof {
                 // b_L = b_L + x_j * b_R
                 b_L[i] = b_L[i] + x_j * b_R[i];
                 // G_L = G_L + x_j * G_R
-                G_L[i] = G1Projective::sum_of_products(
-                    &[G_L[i], G_R[i]],
-                    &[Scalar::one(), x_j],
-                );
+                G_L[i] = G1Projective::sum_of_products(&[G_L[i], G_R[i]], &[Scalar::one(), x_j]);
             }
             a = a_L;
             b = b_L;
@@ -198,8 +214,17 @@ impl LinearProof {
         //
         // Note: in GHL'21 the verification equation is incorrect (as of 05/03/22), with x_j and x_j^{-1} reversed.
         // (Incorrect paper equation: sum_{j=0}^{l-1} (x_j^{-1} * L_j + x_j * R_j) )
-        let L_R_points: Vec<G1Projective> = self.L_vec.iter().map(|&p| p).chain(self.R_vec.iter().map(|&p| p)).collect();
-        let L_R_scalars: Vec<Scalar> = x_vec.iter().map(|&s| s).chain(x_inv_vec.into_iter()).collect();
+        let L_R_points: Vec<G1Projective> = self
+            .L_vec
+            .iter()
+            .map(|&p| p)
+            .chain(self.R_vec.iter().map(|&p| p))
+            .collect();
+        let L_R_scalars: Vec<Scalar> = x_vec
+            .iter()
+            .map(|&s| s)
+            .chain(x_inv_vec.into_iter())
+            .collect();
         let L_R_factors = G1Projective::sum_of_products(&L_R_points, &L_R_scalars);
 
         // This is an optimized way to compute the base case G (G_0 in the paper):
@@ -298,7 +323,7 @@ impl LinearProof {
     /// For vectors of length `n` the proof size is
     /// \\(32 \cdot (2\lg n+3)\\) bytes.
     pub fn serialized_size(&self) -> usize {
-        (self.L_vec.len() * 2 + 1)  * 48 + 64
+        (self.L_vec.len() * 2 + 1) * 48 + 64
     }
 
     /// Serializes the proof into a byte array of \\(2n+3\\) 32-byte elements.
@@ -326,13 +351,17 @@ impl LinearProof {
     #[inline]
     #[allow(dead_code)]
     pub(crate) fn to_bytes_iter(&self) -> impl Iterator<Item = u8> + '_ {
-        self.a.to_bytes().into_iter()
+        self.a
+            .to_bytes()
+            .into_iter()
             .chain(self.r.to_bytes().into_iter())
             .chain(self.S.to_affine().to_compressed().into_iter())
-            .chain(self.L_vec
-            .iter()
-            .zip(self.R_vec.iter())
-            .flat_map(|(l, r)| l.to_affine().to_compressed().into_iter().chain(r.to_affine().to_compressed().into_iter())))
+            .chain(self.L_vec.iter().zip(self.R_vec.iter()).flat_map(|(l, r)| {
+                l.to_affine()
+                    .to_compressed()
+                    .into_iter()
+                    .chain(r.to_affine().to_compressed().into_iter())
+            }))
     }
 
     /// Deserializes the proof from a byte slice.
@@ -358,20 +387,28 @@ impl LinearProof {
             return Err(ProofError::FormatError);
         }
 
-        use crate::util::{read48, read32};
+        use crate::util::{read32, read48};
 
-        let a = Scalar::from_bytes(&read32(&slice[..]))
+        let a = Scalar::from_bytes(&read32(&slice[..])).ok_or(ProofError::FormatError)?;
+        let r = Scalar::from_bytes(&read32(&slice[32..])).ok_or(ProofError::FormatError)?;
+        let S = G1Affine::from_compressed(&read48(&slice[64..]))
+            .map(G1Projective::from)
             .ok_or(ProofError::FormatError)?;
-        let r = Scalar::from_bytes(&read32(&slice[32..]))
-            .ok_or(ProofError::FormatError)?;
-        let S = G1Affine::from_compressed(&read48(&slice[64..])).map(G1Projective::from).ok_or(ProofError::FormatError)?;
 
         let mut L_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
         let mut R_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
         for i in 0..lg_n {
             let pos = 112 + i * 96;
-            L_vec.push(G1Affine::from_compressed(&read48(&slice[pos..])).map(G1Projective::from).ok_or(ProofError::FormatError)?);
-            R_vec.push(G1Affine::from_compressed(&read48(&slice[pos + 48..])).map(G1Projective::from).ok_or(ProofError::FormatError)?);
+            L_vec.push(
+                G1Affine::from_compressed(&read48(&slice[pos..]))
+                    .map(G1Projective::from)
+                    .ok_or(ProofError::FormatError)?,
+            );
+            R_vec.push(
+                G1Affine::from_compressed(&read48(&slice[pos + 48..]))
+                    .map(G1Projective::from)
+                    .ok_or(ProofError::FormatError)?,
+            );
         }
 
         Ok(LinearProof {
@@ -409,8 +446,18 @@ mod tests {
         // C = <a, G> + r * B + <a, b> * F
         let r = Scalar::random(&mut rng);
         let c = inner_product(&a, &b);
-        let C_points: Vec<G1Projective> = G.iter().map(|&p| p).chain(iter::once(B)).chain(iter::once(F)).collect();
-        let C_scalars: Vec<Scalar> = a.iter().map(|&s| s).chain(iter::once(r)).chain(iter::once(c)).collect();
+        let C_points: Vec<G1Projective> = G
+            .iter()
+            .map(|&p| p)
+            .chain(iter::once(B))
+            .chain(iter::once(F))
+            .collect();
+        let C_scalars: Vec<Scalar> = a
+            .iter()
+            .map(|&s| s)
+            .chain(iter::once(r))
+            .chain(iter::once(c))
+            .collect();
         let C = G1Projective::sum_of_products(&C_points, &C_scalars);
 
         let proof = LinearProof::create(

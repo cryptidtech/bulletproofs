@@ -28,11 +28,11 @@ mod linear_proof;
 mod range_proof;
 mod transcript;
 
-use subtle::Choice;
 pub use crate::errors::ProofError;
 pub use crate::generators::{BulletproofGens, BulletproofGensShare, PedersenGens};
 pub use crate::linear_proof::LinearProof;
 pub use crate::range_proof::RangeProof;
+use subtle::Choice;
 
 const HASH_DST: &[u8] = b"BLS12381G1_XOF:SHAKE-256_SSWU_RO_";
 

@@ -1,10 +1,9 @@
 #![allow(non_snake_case)]
 
+use bls12_381_plus::{G1Projective, Scalar};
 use core::borrow::BorrowMut;
 use core::mem;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::VartimeMultiscalarMul;
+use group::ff::Field;
 use merlin::Transcript;
 
 use super::{
@@ -16,6 +15,7 @@ use crate::errors::R1CSError;
 use crate::generators::{BulletproofGens, PedersenGens};
 use crate::r1cs::Metrics;
 use crate::transcript::TranscriptProtocol;
+use crate::CtOptionOps;
 
 /// A [`ConstraintSystem`] implementation for use by the verifier.
 ///
@@ -38,7 +38,7 @@ pub struct Verifier<T: BorrowMut<Transcript>> {
     /// `Missing`), so the `num_vars` isn't kept implicitly in the
     /// variable assignments.
     num_vars: usize,
-    V: Vec<CompressedRistretto>,
+    V: Vec<G1Projective>,
 
     /// This list holds closures that will be called in the second phase of the protocol,
     /// when non-randomized variables are committed.
@@ -241,9 +241,9 @@ impl<T: BorrowMut<Transcript>> Verifier<T> {
     ///
     /// # Returns
     ///
-    /// Returns a pair of a Pedersen commitment (as a compressed Ristretto point),
+    /// Returns a pair of a Pedersen commitment (as a G1Projective point),
     /// and a [`Variable`] corresponding to it, which can be used to form constraints.
-    pub fn commit(&mut self, commitment: CompressedRistretto) -> Variable {
+    pub fn commit(&mut self, commitment: G1Projective) -> Variable {
         let i = self.V.len();
         self.V.push(commitment);
 
@@ -420,7 +420,7 @@ impl<T: BorrowMut<Transcript>> Verifier<T> {
         let a = proof.ipp_proof.a;
         let b = proof.ipp_proof.b;
 
-        let y_inv = y.invert();
+        let y_inv = y.invert().unwrap();
         let y_inv_vec = util::exp_iter(y_inv)
             .take(padded_n)
             .collect::<Vec<Scalar>>();
@@ -474,45 +474,43 @@ impl<T: BorrowMut<Transcript>> Verifier<T> {
         let T_scalars = [r * x, rxx * x, rxx * xx, rxx * xxx, rxx * xx * xx];
         let T_points = [proof.T_1, proof.T_3, proof.T_4, proof.T_5, proof.T_6];
 
-        let mega_check = RistrettoPoint::optional_multiscalar_mul(
-            iter::once(x) // A_I1
-                .chain(iter::once(xx)) // A_O1
-                .chain(iter::once(xxx)) // S1
-                .chain(iter::once(u * x)) // A_I2
-                .chain(iter::once(u * xx)) // A_O2
-                .chain(iter::once(u * xxx)) // S2
-                .chain(wV.iter().map(|wVi| wVi * rxx)) // V
-                .chain(T_scalars.iter().cloned()) // T_points
-                .chain(iter::once(
-                    w * (proof.t_x - a * b) + r * (xx * (wc + delta) - proof.t_x),
-                )) // B
-                .chain(iter::once(-proof.e_blinding - r * proof.t_x_blinding)) // B_blinding
-                .chain(g_scalars) // G
-                .chain(h_scalars) // H
-                .chain(u_sq.iter().cloned()) // ipp_proof.L_vec
-                .chain(u_inv_sq.iter().cloned()), // ipp_proof.R_vec
-            iter::once(proof.A_I1.decompress())
-                .chain(iter::once(proof.A_O1.decompress()))
-                .chain(iter::once(proof.S1.decompress()))
-                .chain(iter::once(proof.A_I2.decompress()))
-                .chain(iter::once(proof.A_O2.decompress()))
-                .chain(iter::once(proof.S2.decompress()))
-                .chain(self.V.iter().map(|V_i| V_i.decompress()))
-                .chain(T_points.iter().map(|T_i| T_i.decompress()))
-                .chain(iter::once(Some(pc_gens.B)))
-                .chain(iter::once(Some(pc_gens.B_blinding)))
-                .chain(gens.G(padded_n).map(|&G_i| Some(G_i)))
-                .chain(gens.H(padded_n).map(|&H_i| Some(H_i)))
-                .chain(proof.ipp_proof.L_vec.iter().map(|L_i| L_i.decompress()))
-                .chain(proof.ipp_proof.R_vec.iter().map(|R_i| R_i.decompress())),
-        )
-        .ok_or_else(|| R1CSError::VerificationError)?;
+        let mega_points: Vec<G1Projective> = iter::once(proof.A_I1)
+            .chain(iter::once(proof.A_O1))
+            .chain(iter::once(proof.S1))
+            .chain(iter::once(proof.A_I2))
+            .chain(iter::once(proof.A_O2))
+            .chain(iter::once(proof.S2))
+            .chain(self.V.iter().copied())
+            .chain(T_points.iter().copied())
+            .chain(iter::once(pc_gens.B))
+            .chain(iter::once(pc_gens.B_blinding))
+            .chain(gens.G(padded_n).copied())
+            .chain(gens.H(padded_n).copied())
+            .chain(proof.ipp_proof.L_vec.iter().copied())
+            .chain(proof.ipp_proof.R_vec.iter().copied())
+            .collect();
+        let mega_scalars: Vec<Scalar> = iter::once(x) // A_I1
+            .chain(iter::once(xx)) // A_O1
+            .chain(iter::once(xxx)) // S1
+            .chain(iter::once(u * x)) // A_I2
+            .chain(iter::once(u * xx)) // A_O2
+            .chain(iter::once(u * xxx)) // S2
+            .chain(wV.iter().map(|wVi| wVi * rxx)) // V
+            .chain(T_scalars.iter().copied()) // T_points
+            .chain(iter::once(
+                w * (proof.t_x - a * b) + r * (xx * (wc + delta) - proof.t_x),
+            )) // B
+            .chain(iter::once(-proof.e_blinding - r * proof.t_x_blinding)) // B_blinding
+            .chain(g_scalars) // G
+            .chain(h_scalars) // H
+            .chain(u_sq.iter().cloned()) // ipp_proof.L_vec
+            .chain(u_inv_sq.iter().copied()) // ipp_proof.R_vec
+            .collect();
+        let mega_check = G1Projective::sum_of_products(&mega_points, &mega_scalars);
 
-        use curve25519_dalek::traits::IsIdentity;
-
-        if !mega_check.is_identity() {
-            return Err(R1CSError::VerificationError);
-        }
+        mega_check
+            .is_identity()
+            .ok_or(R1CSError::VerificationError)?;
 
         Ok(self.transcript)
     }

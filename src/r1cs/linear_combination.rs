@@ -1,6 +1,6 @@
 //! Definition of linear combinations.
 
-use curve25519_dalek::scalar::Scalar;
+use bls12_381_plus::Scalar;
 use std::iter::FromIterator;
 use std::ops::{Add, Mul, Neg, Sub};
 

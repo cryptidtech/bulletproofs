@@ -8,9 +8,9 @@ extern crate alloc;
 
 use super::HASH_DST;
 use alloc::vec::Vec;
-use bls12_381_plus::{G1Projective, Scalar, ExpandMsgXof};
-use group::Curve;
+use bls12_381_plus::{ExpandMsgXof, G1Projective, Scalar};
 use digest::{ExtendableOutputDirty, Update, XofReader};
+use group::Curve;
 use sha3::{Sha3XofReader, Shake256};
 
 /// Represents a pair of base points for Pedersen commitments.
@@ -43,7 +43,10 @@ impl Default for PedersenGens {
     fn default() -> Self {
         PedersenGens {
             B: G1Projective::generator(),
-            B_blinding: G1Projective::hash::<ExpandMsgXof<Shake256>>(&G1Projective::generator().to_affine().to_compressed(), HASH_DST),
+            B_blinding: G1Projective::hash::<ExpandMsgXof<Shake256>>(
+                &G1Projective::generator().to_affine().to_compressed(),
+                HASH_DST,
+            ),
         }
     }
 }
@@ -91,7 +94,10 @@ impl Iterator for GeneratorsChain {
         let mut uniform_bytes = [0u8; 64];
         self.reader.read(&mut uniform_bytes);
 
-        Some(G1Projective::hash::<ExpandMsgXof<Shake256>>(&uniform_bytes, HASH_DST))
+        Some(G1Projective::hash::<ExpandMsgXof<Shake256>>(
+            &uniform_bytes,
+            HASH_DST,
+        ))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

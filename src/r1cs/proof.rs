@@ -1,13 +1,13 @@
 #![allow(non_snake_case)]
 //! Definition of the proof struct.
 
-use curve25519_dalek::ristretto::CompressedRistretto;
-use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::{Identity, IsIdentity};
+use bls12_381_plus::{G1Affine, G1Projective, Scalar};
+use group::Curve;
 
 use crate::errors::R1CSError;
 use crate::inner_product_proof::InnerProductProof;
 use crate::util;
+use crate::CtOptionOps;
 
 use serde::de::Visitor;
 use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
@@ -35,27 +35,27 @@ const TWO_PHASE_COMMITMENTS: u8 = 1;
 #[allow(non_snake_case)]
 pub struct R1CSProof {
     /// Commitment to the values of input wires in the first phase.
-    pub(super) A_I1: CompressedRistretto,
+    pub(super) A_I1: G1Projective,
     /// Commitment to the values of output wires in the first phase.
-    pub(super) A_O1: CompressedRistretto,
+    pub(super) A_O1: G1Projective,
     /// Commitment to the blinding factors in the first phase.
-    pub(super) S1: CompressedRistretto,
+    pub(super) S1: G1Projective,
     /// Commitment to the values of input wires in the second phase.
-    pub(super) A_I2: CompressedRistretto,
+    pub(super) A_I2: G1Projective,
     /// Commitment to the values of output wires in the second phase.
-    pub(super) A_O2: CompressedRistretto,
+    pub(super) A_O2: G1Projective,
     /// Commitment to the blinding factors in the second phase.
-    pub(super) S2: CompressedRistretto,
+    pub(super) S2: G1Projective,
     /// Commitment to the \\(t_1\\) coefficient of \\( t(x) \\)
-    pub(super) T_1: CompressedRistretto,
+    pub(super) T_1: G1Projective,
     /// Commitment to the \\(t_3\\) coefficient of \\( t(x) \\)
-    pub(super) T_3: CompressedRistretto,
+    pub(super) T_3: G1Projective,
     /// Commitment to the \\(t_4\\) coefficient of \\( t(x) \\)
-    pub(super) T_4: CompressedRistretto,
+    pub(super) T_4: G1Projective,
     /// Commitment to the \\(t_5\\) coefficient of \\( t(x) \\)
-    pub(super) T_5: CompressedRistretto,
+    pub(super) T_5: G1Projective,
     /// Commitment to the \\(t_6\\) coefficient of \\( t(x) \\)
-    pub(super) T_6: CompressedRistretto,
+    pub(super) T_6: G1Projective,
     /// Evaluation of the polynomial \\(t(x)\\) at the challenge point \\(x\\)
     pub(super) t_x: Scalar,
     /// Blinding factor for the synthetic commitment to \\( t(x) \\)
@@ -84,27 +84,27 @@ impl R1CSProof {
         let mut buf = Vec::with_capacity(self.serialized_size());
         if self.missing_phase2_commitments() {
             buf.push(ONE_PHASE_COMMITMENTS);
-            buf.extend_from_slice(self.A_I1.as_bytes());
-            buf.extend_from_slice(self.A_O1.as_bytes());
-            buf.extend_from_slice(self.S1.as_bytes());
+            buf.extend_from_slice(&self.A_I1.to_affine().to_compressed());
+            buf.extend_from_slice(&self.A_O1.to_affine().to_compressed());
+            buf.extend_from_slice(&self.S1.to_affine().to_compressed());
         } else {
             buf.push(TWO_PHASE_COMMITMENTS);
-            buf.extend_from_slice(self.A_I1.as_bytes());
-            buf.extend_from_slice(self.A_O1.as_bytes());
-            buf.extend_from_slice(self.S1.as_bytes());
-            buf.extend_from_slice(self.A_I2.as_bytes());
-            buf.extend_from_slice(self.A_O2.as_bytes());
-            buf.extend_from_slice(self.S2.as_bytes());
+            buf.extend_from_slice(&self.A_I1.to_affine().to_compressed());
+            buf.extend_from_slice(&self.A_O1.to_affine().to_compressed());
+            buf.extend_from_slice(&self.S1.to_affine().to_compressed());
+            buf.extend_from_slice(&self.A_I2.to_affine().to_compressed());
+            buf.extend_from_slice(&self.A_O2.to_affine().to_compressed());
+            buf.extend_from_slice(&self.S2.to_affine().to_compressed());
         }
-        buf.extend_from_slice(self.T_1.as_bytes());
-        buf.extend_from_slice(self.T_3.as_bytes());
-        buf.extend_from_slice(self.T_4.as_bytes());
-        buf.extend_from_slice(self.T_5.as_bytes());
-        buf.extend_from_slice(self.T_6.as_bytes());
-        buf.extend_from_slice(self.t_x.as_bytes());
-        buf.extend_from_slice(self.t_x_blinding.as_bytes());
-        buf.extend_from_slice(self.e_blinding.as_bytes());
-        buf.extend(self.ipp_proof.to_bytes_iter());
+        buf.extend_from_slice(&self.T_1.to_affine().to_compressed());
+        buf.extend_from_slice(&self.T_3.to_affine().to_compressed());
+        buf.extend_from_slice(&self.T_4.to_affine().to_compressed());
+        buf.extend_from_slice(&self.T_5.to_affine().to_compressed());
+        buf.extend_from_slice(&self.T_6.to_affine().to_compressed());
+        buf.extend_from_slice(&self.t_x.to_bytes());
+        buf.extend_from_slice(&self.t_x_blinding.to_bytes());
+        buf.extend_from_slice(&self.e_blinding.to_bytes());
+        buf.extend_from_slice(&self.ipp_proof.to_bytes());
         buf
     }
 
@@ -112,15 +112,16 @@ impl R1CSProof {
     pub fn serialized_size(&self) -> usize {
         // version tag + (11 or 14) elements + the ipp
         let elements = if self.missing_phase2_commitments() {
-            11
+            8
         } else {
-            14
+            11
         };
-        1 + elements * 32 + self.ipp_proof.serialized_size()
+        1 + elements * 48 + 3 * 32 + self.ipp_proof.serialized_size()
     }
 
     fn missing_phase2_commitments(&self) -> bool {
-        self.A_I2.is_identity() && self.A_O2.is_identity() && self.S2.is_identity()
+        (self.A_I2.is_identity() & self.A_O2.is_identity() & self.S2.is_identity()).unwrap_u8()
+            == 1u8
     }
 
     /// Deserializes the proof from a byte slice.
@@ -133,13 +134,9 @@ impl R1CSProof {
         let version = slice[0];
         let mut slice = &slice[1..];
 
-        if slice.len() % 32 != 0 {
-            return Err(R1CSError::FormatError);
-        }
-
         let minlength = match version {
-            ONE_PHASE_COMMITMENTS => 11 * 32,
-            TWO_PHASE_COMMITMENTS => 14 * 32,
+            ONE_PHASE_COMMITMENTS => 8 * 48 + 3 * 32,
+            TWO_PHASE_COMMITMENTS => 11 * 48 + 3 * 32,
             _ => return Err(R1CSError::FormatError),
         };
 
@@ -155,31 +152,60 @@ impl R1CSProof {
                 tmp
             }};
         }
+        macro_rules! read48 {
+            () => {{
+                let tmp = util::read48(slice);
+                slice = &slice[48..];
+                tmp
+            }};
+        }
 
-        let A_I1 = CompressedRistretto(read32!());
-        let A_O1 = CompressedRistretto(read32!());
-        let S1 = CompressedRistretto(read32!());
+        let A_I1 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
+        let A_O1 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
+        let S1 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
         let (A_I2, A_O2, S2) = if version == ONE_PHASE_COMMITMENTS {
             (
-                CompressedRistretto::identity(),
-                CompressedRistretto::identity(),
-                CompressedRistretto::identity(),
+                G1Projective::identity(),
+                G1Projective::identity(),
+                G1Projective::identity(),
             )
         } else {
             (
-                CompressedRistretto(read32!()),
-                CompressedRistretto(read32!()),
-                CompressedRistretto(read32!()),
+                G1Affine::from_compressed(&read48!())
+                    .map(G1Projective::from)
+                    .ok_or(R1CSError::FormatError)?,
+                G1Affine::from_compressed(&read48!())
+                    .map(G1Projective::from)
+                    .ok_or(R1CSError::FormatError)?,
+                G1Affine::from_compressed(&read48!())
+                    .map(G1Projective::from)
+                    .ok_or(R1CSError::FormatError)?,
             )
         };
-        let T_1 = CompressedRistretto(read32!());
-        let T_3 = CompressedRistretto(read32!());
-        let T_4 = CompressedRistretto(read32!());
-        let T_5 = CompressedRistretto(read32!());
-        let T_6 = CompressedRistretto(read32!());
-        let t_x = Scalar::from_canonical_bytes(read32!()).ok_or(R1CSError::FormatError)?;
-        let t_x_blinding = Scalar::from_canonical_bytes(read32!()).ok_or(R1CSError::FormatError)?;
-        let e_blinding = Scalar::from_canonical_bytes(read32!()).ok_or(R1CSError::FormatError)?;
+        let T_1 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
+        let T_3 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
+        let T_4 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
+        let T_5 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
+        let T_6 = G1Affine::from_compressed(&read48!())
+            .map(G1Projective::from)
+            .ok_or(R1CSError::FormatError)?;
+        let t_x = Scalar::from_bytes(&read32!()).ok_or(R1CSError::FormatError)?;
+        let t_x_blinding = Scalar::from_bytes(&read32!()).ok_or(R1CSError::FormatError)?;
+        let e_blinding = Scalar::from_bytes(&read32!()).ok_or(R1CSError::FormatError)?;
 
         // XXX: IPPProof from_bytes gives ProofError.
         let ipp_proof = InnerProductProof::from_bytes(slice).map_err(|_| R1CSError::FormatError)?;

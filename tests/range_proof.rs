@@ -3,8 +3,8 @@ use rand_core::SeedableRng;
 use rand_chacha::ChaChaRng;
 
 use bls12_381_plus::Scalar;
-use group::Curve;
 use group::ff::Field;
+use group::Curve;
 
 use merlin::Transcript;
 

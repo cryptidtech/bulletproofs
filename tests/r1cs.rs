@@ -1,14 +1,9 @@
 #![allow(non_snake_case)]
 
-extern crate bulletproofs;
-extern crate curve25519_dalek;
-extern crate merlin;
-extern crate rand;
-
+use bls12_381_plus::{G1Projective, Scalar};
 use bulletproofs::r1cs::*;
 use bulletproofs::{BulletproofGens, PedersenGens};
-use curve25519_dalek::ristretto::CompressedRistretto;
-use curve25519_dalek::scalar::Scalar;
+use group::ff::Field;
 use merlin::Transcript;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -71,14 +66,7 @@ impl ShuffleProof {
         transcript: &'a mut Transcript,
         input: &[Scalar],
         output: &[Scalar],
-    ) -> Result<
-        (
-            ShuffleProof,
-            Vec<CompressedRistretto>,
-            Vec<CompressedRistretto>,
-        ),
-        R1CSError,
-    > {
+    ) -> Result<(ShuffleProof, Vec<G1Projective>, Vec<G1Projective>), R1CSError> {
         // Apply a domain separator with the shuffle parameters to the transcript
         // XXX should this be part of the gadget?
         let k = input.len();
@@ -116,8 +104,8 @@ impl ShuffleProof {
         pc_gens: &'b PedersenGens,
         bp_gens: &'b BulletproofGens,
         transcript: &'a mut Transcript,
-        input_commitments: &Vec<CompressedRistretto>,
-        output_commitments: &Vec<CompressedRistretto>,
+        input_commitments: &Vec<G1Projective>,
+        output_commitments: &Vec<G1Projective>,
     ) -> Result<(), R1CSError> {
         // Apply a domain separator with the shuffle parameters to the transcript
         // XXX should this be part of the gadget?
@@ -248,7 +236,7 @@ fn example_gadget_proof(
     b2: u64,
     c1: u64,
     c2: u64,
-) -> Result<(R1CSProof, Vec<CompressedRistretto>), R1CSError> {
+) -> Result<(R1CSProof, Vec<G1Projective>), R1CSError> {
     let mut transcript = Transcript::new(b"R1CSExampleGadget");
 
     // 1. Create a prover
@@ -257,7 +245,7 @@ fn example_gadget_proof(
     // 2. Commit high-level variables
     let (commitments, vars): (Vec<_>, Vec<_>) = [a1, a2, b1, b2, c1]
         .into_iter()
-        .map(|x| prover.commit(Scalar::from(*x), Scalar::random(&mut thread_rng())))
+        .map(|x| prover.commit(Scalar::from(x), Scalar::random(&mut thread_rng())))
         .unzip();
 
     // 3. Build a CS
@@ -283,7 +271,7 @@ fn example_gadget_verify(
     bp_gens: &BulletproofGens,
     c2: u64,
     proof: R1CSProof,
-    commitments: Vec<CompressedRistretto>,
+    commitments: Vec<G1Projective>,
 ) -> Result<(), R1CSError> {
     let mut transcript = Transcript::new(b"R1CSExampleGadget");
 

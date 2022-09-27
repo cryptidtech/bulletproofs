@@ -8,8 +8,8 @@ extern crate alloc;
 
 use super::CtOptionOps;
 use alloc::vec::Vec;
-use core::iter;
 use bls12_381_plus::{G1Projective, Scalar};
+use core::iter;
 use serde::{Deserialize, Serialize};
 
 use crate::generators::{BulletproofGens, PedersenGens};
@@ -124,25 +124,31 @@ impl ProofShare {
                 z + exp_y_inv * y_jn_inv * (-r_i) + exp_y_inv * y_jn_inv * (zz * z_j * exp_2)
             });
 
-        let P_points: Vec<G1Projective> =
-            iter::once(bit_commitment.A_j)
-                .chain(iter::once(bit_commitment.S_j))
-                .chain(iter::once(pc_gens.B_blinding))
-                .chain(bp_gens.share(j).G(n).map(|&p| p))
-                .chain(bp_gens.share(j).H(n).map(|&p| p)).collect();
-        let P_scalars: Vec<Scalar> =
-            iter::once(Scalar::one())
-                .chain(iter::once(*x))
-                .chain(iter::once(-self.e_blinding))
-                .chain(g)
-                .chain(h).collect();
+        let P_points: Vec<G1Projective> = iter::once(bit_commitment.A_j)
+            .chain(iter::once(bit_commitment.S_j))
+            .chain(iter::once(pc_gens.B_blinding))
+            .chain(bp_gens.share(j).G(n).map(|&p| p))
+            .chain(bp_gens.share(j).H(n).map(|&p| p))
+            .collect();
+        let P_scalars: Vec<Scalar> = iter::once(Scalar::one())
+            .chain(iter::once(*x))
+            .chain(iter::once(-self.e_blinding))
+            .chain(g)
+            .chain(h)
+            .collect();
         let P_check = G1Projective::sum_of_products(&P_points, &P_scalars);
         P_check.is_identity().ok_or(())?;
 
         let sum_of_powers_y = util::sum_of_powers(&y, n);
         let sum_of_powers_2 = util::sum_of_powers(&Scalar::from(2u64), n);
         let delta = (z - zz) * sum_of_powers_y * y_jn - z * zz * sum_of_powers_2 * z_j;
-        let t_points = [bit_commitment.V_j, poly_commitment.T_1_j, poly_commitment.T_2_j, pc_gens.B, pc_gens.B_blinding];
+        let t_points = [
+            bit_commitment.V_j,
+            poly_commitment.T_1_j,
+            poly_commitment.T_2_j,
+            pc_gens.B,
+            pc_gens.B_blinding,
+        ];
         let t_scalars = [zz * z_j, *x, x * x, delta - self.t_x, -self.t_x_blinding];
         let t_check = G1Projective::sum_of_products(&t_points, &t_scalars);
 

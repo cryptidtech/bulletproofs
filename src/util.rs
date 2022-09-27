@@ -426,7 +426,7 @@ mod tests {
 
         let allinv = Scalar::batch_invert(&mut scalars);
 
-        assert_eq!(allinv, Scalar::from(3*5*7*11u64).invert().unwrap());
+        assert_eq!(allinv, Scalar::from(3 * 5 * 7 * 11u64).invert().unwrap());
         assert_eq!(scalars[0], Scalar::from(3u64).invert().unwrap());
         assert_eq!(scalars[1], Scalar::from(5u64).invert().unwrap());
         assert_eq!(scalars[2], Scalar::from(7u64).invert().unwrap());
