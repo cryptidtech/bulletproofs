@@ -226,9 +226,9 @@ pub fn scalar_exp_vartime(x: &Scalar, mut n: u64) -> Scalar {
     while n > 0 {
         let bit = n & 1;
         if bit == 1 {
-            result *= aux;
+            result = result * aux;
         }
-        n >>= 1;
+        n = n >> 1;
         aux = aux * aux; // FIXME: one unnecessary mult at the last step here!
     }
     result
@@ -251,7 +251,7 @@ pub fn sum_of_powers(x: &Scalar, n: usize) -> Scalar {
     while m > 2 {
         factor = factor * factor;
         result = result + factor * result;
-        m /= 2;
+        m = m / 2;
     }
     result
 }

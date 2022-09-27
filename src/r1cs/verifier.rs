@@ -314,7 +314,7 @@ impl<T: BorrowMut<Transcript>> Verifier<T> {
         // Clear the pending multiplier (if any) because it was committed into A_L/A_R/S.
         self.pending_multiplier = None;
 
-        if self.deferred_constraints.is_empty() {
+        if self.deferred_constraints.len() == 0 {
             self.transcript.borrow_mut().r1cs_1phase_domain_sep();
             Ok(self)
         } else {
@@ -322,7 +322,7 @@ impl<T: BorrowMut<Transcript>> Verifier<T> {
             // Note: the wrapper could've used &mut instead of ownership,
             // but specifying lifetimes for boxed closures is not going to be nice,
             // so we move the self into wrapper and then move it back out afterwards.
-            let mut callbacks = mem::take(&mut self.deferred_constraints);
+            let mut callbacks = mem::replace(&mut self.deferred_constraints, Vec::new());
             let mut wrapped_self = RandomizingVerifier { verifier: self };
             for callback in callbacks.drain(..) {
                 callback(&mut wrapped_self)?;

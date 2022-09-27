@@ -375,7 +375,7 @@ impl<'g, T: BorrowMut<Transcript>> Prover<'g, T> {
         // Clear the pending multiplier (if any) because it was committed into A_L/A_R/S.
         self.pending_multiplier = None;
 
-        if self.deferred_constraints.is_empty() {
+        if self.deferred_constraints.len() == 0 {
             self.transcript.borrow_mut().r1cs_1phase_domain_sep();
             Ok(self)
         } else {
@@ -383,7 +383,7 @@ impl<'g, T: BorrowMut<Transcript>> Prover<'g, T> {
             // Note: the wrapper could've used &mut instead of ownership,
             // but specifying lifetimes for boxed closures is not going to be nice,
             // so we move the self into wrapper and then move it back out afterwards.
-            let mut callbacks = mem::take(&mut self.deferred_constraints );
+            let mut callbacks = mem::replace(&mut self.deferred_constraints, Vec::new());
             let mut wrapped_self = RandomizingProver { prover: self };
             for callback in callbacks.drain(..) {
                 callback(&mut wrapped_self)?;
@@ -458,8 +458,8 @@ impl<'g, T: BorrowMut<Transcript>> Prover<'g, T> {
 
         // A_I = <a_L, G> + <a_R, H> + i_blinding * B_blinding
         let A_I1_points: Vec<G1Projective> = iter::once(self.pc_gens.B_blinding)
-            .chain(gens.G(n1).copied())
-            .chain(gens.H(n1).copied())
+            .chain(gens.G(n1).map(|&p| p))
+            .chain(gens.H(n1).map(|&p| p))
             .collect();
         let A_I1_scalars: Vec<Scalar> = iter::once(i_blinding1)
             .chain(self.secrets.a_L.iter().copied())
@@ -612,7 +612,7 @@ impl<'g, T: BorrowMut<Transcript>> Prover<'g, T> {
             // r_poly.3 = y^n * s_R
             r_poly.3[i] = exp_y * sr;
 
-            exp_y *= y; // y^i -> y^(i+1)
+            exp_y = exp_y * y; // y^i -> y^(i+1)
         }
 
         let t_poly = util::VecPoly3::special_inner_product(&l_poly, &r_poly);
@@ -667,7 +667,7 @@ impl<'g, T: BorrowMut<Transcript>> Prover<'g, T> {
         // XXX this should refer to the notes to explain why this is correct
         for i in n..padded_n {
             r_vec[i] = -exp_y;
-            exp_y *= exp_y; // y^i -> y^(i+1)
+            exp_y = exp_y * y; // y^i -> y^(i+1)
         }
 
         let i_blinding = i_blinding1 + u * i_blinding2;

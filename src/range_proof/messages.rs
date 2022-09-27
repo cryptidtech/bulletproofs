@@ -127,8 +127,8 @@ impl ProofShare {
         let P_points: Vec<G1Projective> = iter::once(bit_commitment.A_j)
             .chain(iter::once(bit_commitment.S_j))
             .chain(iter::once(pc_gens.B_blinding))
-            .chain(bp_gens.share(j).G(n).copied())
-            .chain(bp_gens.share(j).H(n).copied())
+            .chain(bp_gens.share(j).G(n).map(|&p| p))
+            .chain(bp_gens.share(j).H(n).map(|&p| p))
             .collect();
         let P_scalars: Vec<Scalar> = iter::once(Scalar::one())
             .chain(iter::once(*x))
@@ -139,7 +139,7 @@ impl ProofShare {
         let P_check = G1Projective::sum_of_products(&P_points, &P_scalars);
         P_check.is_identity().ok_or(())?;
 
-        let sum_of_powers_y = util::sum_of_powers(y, n);
+        let sum_of_powers_y = util::sum_of_powers(&y, n);
         let sum_of_powers_2 = util::sum_of_powers(&Scalar::from(2u64), n);
         let delta = (z - zz) * sum_of_powers_y * y_jn - z * zz * sum_of_powers_2 * z_j;
         let t_points = [

@@ -80,8 +80,7 @@ impl TranscriptProtocol for Transcript {
         if point.is_identity().unwrap_u8() == 1u8 {
             Err(ProofError::VerificationError)
         } else {
-            self.append_message(label, &point.to_affine().to_compressed());
-            Ok(())
+            Ok(self.append_message(label, &point.to_affine().to_compressed()))
         }
     }
 
