@@ -362,24 +362,6 @@ impl InnerProductProof {
         buf
     }
 
-    /// Converts the proof into a byte iterator over serialized view of the proof.
-    /// The layout of the inner product proof is:
-    /// * \\(n\\) pairs of compressed G1Projective points \\(L_0, R_0 \dots, L_{n-1}, R_{n-1}\\),
-    /// * two scalars \\(a, b\\).
-    #[inline]
-    pub(crate) fn to_bytes_iter(&self) -> impl Iterator<Item = u8> + '_ {
-        self.a
-            .to_bytes()
-            .into_iter()
-            .chain(self.b.to_bytes().into_iter())
-            .chain(self.L_vec.iter().zip(self.R_vec.iter()).flat_map(|(l, r)| {
-                l.to_affine()
-                    .to_compressed()
-                    .into_iter()
-                    .chain(r.to_affine().to_compressed().into_iter())
-            }))
-    }
-
     /// Deserializes the proof from a byte slice.
     /// Returns an error in the following cases:
     /// * the slice does not have \\(2n+2\\) 32-byte elements,
