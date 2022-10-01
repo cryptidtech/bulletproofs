@@ -519,7 +519,6 @@ impl RangeProof {
             Scalar::from_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
         pos += 32;
 
-        println!("{}", line!());
         let ipp_proof = InnerProductProof::from_bytes(&slice[pos..])?;
 
         Ok(RangeProof {
