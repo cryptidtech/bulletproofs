@@ -19,8 +19,8 @@ description = "A pure-Rust implementation of Bulletproofs"
 edition = "2021"
 
 [dependencies]
-bls12_381_plus = "=0.5.2"
-group = "=0.10.0"
+bls12_381_plus = "=0.5.3"
+group = "=0.12.1"
 # subtle = { package = "subtle-ng", version = "2.4", default-features = false }
 subtle = { version = "2.4", default-features = false }
 sha3 = { version = "0.9.1", default-features = false }

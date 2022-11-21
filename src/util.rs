@@ -290,7 +290,7 @@ impl ScalarBatchInvert for Scalar {
             acc *= s;
         }
 
-        debug_assert!(!acc.is_zero());
+        debug_assert!(acc.is_zero().unwrap_u8() == 0);
 
         acc = acc.invert().unwrap();
         let ret = acc;

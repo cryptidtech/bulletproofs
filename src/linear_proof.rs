@@ -231,11 +231,7 @@ impl LinearProof {
             .copied()
             .chain(self.R_vec.iter().copied())
             .collect();
-        let L_R_scalars: Vec<Scalar> = x_vec
-            .iter()
-            .copied()
-            .chain(x_inv_vec.into_iter())
-            .collect();
+        let L_R_scalars: Vec<Scalar> = x_vec.iter().copied().chain(x_inv_vec.into_iter()).collect();
         let L_R_factors = G1Projective::sum_of_products(&L_R_points, &L_R_scalars);
 
         // This is an optimized way to compute the base case G (G_0 in the paper):
