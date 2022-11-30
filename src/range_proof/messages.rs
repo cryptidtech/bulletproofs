@@ -130,7 +130,7 @@ impl ProofShare {
             .chain(bp_gens.share(j).G(n).copied())
             .chain(bp_gens.share(j).H(n).copied())
             .collect();
-        let P_scalars: Vec<Scalar> = iter::once(Scalar::one())
+        let P_scalars: Vec<Scalar> = iter::once(Scalar::ONE)
             .chain(iter::once(*x))
             .chain(iter::once(-self.e_blinding))
             .chain(g)

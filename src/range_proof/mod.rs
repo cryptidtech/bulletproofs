@@ -420,7 +420,7 @@ impl RangeProof {
             .chain(bp_gens.H(n, m).copied())
             .chain(value_commitments.iter().copied())
             .collect();
-        let mega_scalars: Vec<Scalar> = iter::once(Scalar::one())
+        let mega_scalars: Vec<Scalar> = iter::once(Scalar::ONE)
             .chain(iter::once(x))
             .chain(iter::once(c * x))
             .chain(iter::once(c * x * x))
@@ -607,9 +607,9 @@ mod tests {
         // code copied from previous implementation
         let z2 = z * z;
         let z3 = z2 * z;
-        let mut power_g = Scalar::zero();
-        let mut exp_y = Scalar::one(); // start at y^0 = 1
-        let mut exp_2 = Scalar::one(); // start at 2^0 = 1
+        let mut power_g = Scalar::ZERO;
+        let mut exp_y = Scalar::ONE; // start at y^0 = 1
+        let mut exp_2 = Scalar::ONE; // start at 2^0 = 1
         for _ in 0..n {
             power_g += (z - z2) * exp_y - z3 * exp_2;
 
@@ -828,10 +828,10 @@ mod tests {
             dealer.receive_poly_commitments(vec![poly_com0]).unwrap();
 
         // But now simulate a malicious dealer choosing x = 0
-        poly_challenge.x = Scalar::zero();
+        poly_challenge.x = Scalar::ZERO;
 
         let maybe_share0 = party0.apply_challenge(&poly_challenge);
 
-        assert!(maybe_share0.unwrap_err() == MPCError::MaliciousDealer);
+        assert_eq!(maybe_share0.unwrap_err(), MPCError::MaliciousDealer);
     }
 }

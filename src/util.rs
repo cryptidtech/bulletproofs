@@ -63,7 +63,7 @@ impl Iterator for ScalarExp {
 
 /// Return an iterator of the powers of `x`.
 pub fn exp_iter(x: Scalar) -> ScalarExp {
-    let next_exp_x = Scalar::one();
+    let next_exp_x = Scalar::ONE;
     ScalarExp { x, next_exp_x }
 }
 
@@ -72,7 +72,7 @@ pub fn add_vec(a: &[Scalar], b: &[Scalar]) -> Vec<Scalar> {
         // throw some error
         //println!("lengths of vectors don't match for vector addition");
     }
-    let mut out = vec![Scalar::zero(); b.len()];
+    let mut out = vec![Scalar::ZERO; b.len()];
     for i in 0..a.len() {
         out[i] = a[i] + b[i];
     }
@@ -81,7 +81,7 @@ pub fn add_vec(a: &[Scalar], b: &[Scalar]) -> Vec<Scalar> {
 
 impl VecPoly1 {
     pub fn zero(n: usize) -> Self {
-        VecPoly1(vec![Scalar::zero(); n], vec![Scalar::zero(); n])
+        VecPoly1(vec![Scalar::ZERO; n], vec![Scalar::ZERO; n])
     }
 
     pub fn inner_product(&self, rhs: &VecPoly1) -> Poly2 {
@@ -102,7 +102,7 @@ impl VecPoly1 {
 
     pub fn eval(&self, x: Scalar) -> Vec<Scalar> {
         let n = self.0.len();
-        let mut out = vec![Scalar::zero(); n];
+        let mut out = vec![Scalar::ZERO; n];
         for i in 0..n {
             out[i] = self.0[i] + self.1[i] * x;
         }
@@ -221,7 +221,7 @@ impl Drop for Poly6 {
 /// with (1 to 2)*lg(n) scalar multiplications.
 /// TODO: a consttime version of this would be awfully similar to a Montgomery ladder.
 pub fn scalar_exp_vartime(x: &Scalar, mut n: u64) -> Scalar {
-    let mut result = Scalar::one();
+    let mut result = Scalar::ONE;
     let mut aux = *x; // x, x^2, x^4, x^8, ...
     while n > 0 {
         let bit = n & 1;
@@ -246,7 +246,7 @@ pub fn sum_of_powers(x: &Scalar, n: usize) -> Scalar {
         return Scalar::from(n as u64);
     }
     let mut m = n;
-    let mut result = Scalar::one() + x;
+    let mut result = Scalar::ONE + x;
     let mut factor = *x;
     while m > 2 {
         factor = factor * factor;
@@ -282,8 +282,8 @@ impl ScalarBatchInvert for Scalar {
     fn batch_invert(scalars: &mut [Scalar]) -> Scalar {
         let n = scalars.len();
 
-        let mut acc = Scalar::one();
-        let mut scratch = vec![Scalar::one(); n];
+        let mut acc = Scalar::ONE;
+        let mut scratch = vec![Scalar::ONE; n];
 
         for (s, sc) in scalars.iter().zip(scratch.iter_mut()) {
             *sc = acc;
@@ -338,7 +338,7 @@ mod tests {
 
     /// Raises `x` to the power `n`.
     fn scalar_exp_vartime_slow(x: &Scalar, n: u64) -> Scalar {
-        let mut result = Scalar::one();
+        let mut result = Scalar::ONE;
         for _ in 0..n {
             result = result * x;
         }
@@ -361,8 +361,8 @@ mod tests {
     #[test]
     fn test_sum_of_powers_slow() {
         let x = Scalar::from(10u64);
-        assert_eq!(sum_of_powers_slow(&x, 0), Scalar::zero());
-        assert_eq!(sum_of_powers_slow(&x, 1), Scalar::one());
+        assert_eq!(sum_of_powers_slow(&x, 0), Scalar::ZERO);
+        assert_eq!(sum_of_powers_slow(&x, 1), Scalar::ONE);
         assert_eq!(sum_of_powers_slow(&x, 2), Scalar::from(11u64));
         assert_eq!(sum_of_powers_slow(&x, 3), Scalar::from(111u64));
         assert_eq!(sum_of_powers_slow(&x, 4), Scalar::from(1111u64));
@@ -386,8 +386,8 @@ mod tests {
         }
 
         assert_eq!(flat_slice(&v.as_slice()), &[0u8; 64][..]);
-        assert_eq!(v[0], Scalar::zero());
-        assert_eq!(v[1], Scalar::zero());
+        assert_eq!(v[0], Scalar::ZERO);
+        assert_eq!(v[1], Scalar::ZERO);
     }
 
     #[test]
@@ -410,9 +410,9 @@ mod tests {
         }
 
         assert_eq!(as_bytes(&v), &[0u8; 96][..]);
-        assert_eq!(v.0, Scalar::zero());
-        assert_eq!(v.1, Scalar::zero());
-        assert_eq!(v.2, Scalar::zero());
+        assert_eq!(v.0, Scalar::ZERO);
+        assert_eq!(v.1, Scalar::ZERO);
+        assert_eq!(v.2, Scalar::ZERO);
     }
 
     #[test]

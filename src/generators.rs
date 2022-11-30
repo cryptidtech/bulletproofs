@@ -42,9 +42,9 @@ impl PedersenGens {
 impl Default for PedersenGens {
     fn default() -> Self {
         PedersenGens {
-            B: G1Projective::generator(),
+            B: G1Projective::GENERATOR,
             B_blinding: G1Projective::hash::<ExpandMsgXof<Shake256>>(
-                &G1Projective::generator().to_affine().to_compressed(),
+                &G1Projective::GENERATOR.to_affine().to_compressed(),
                 HASH_DST,
             ),
         }

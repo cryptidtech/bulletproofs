@@ -254,7 +254,7 @@ impl<'a, 'b> DealerAwaitingProofShares<'a, 'b> {
         let w = self.transcript.challenge_scalar(b"w");
         let Q = self.pc_gens.B * w;
 
-        let G_factors: Vec<Scalar> = iter::repeat(Scalar::one()).take(self.n * self.m).collect();
+        let G_factors: Vec<Scalar> = iter::repeat(Scalar::ONE).take(self.n * self.m).collect();
         let H_factors: Vec<Scalar> = util::exp_iter(self.bit_challenge.y.invert().unwrap())
             .take(self.n * self.m)
             .collect();
