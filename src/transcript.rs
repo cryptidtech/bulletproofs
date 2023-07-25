@@ -65,7 +65,7 @@ impl TranscriptProtocol for Transcript {
     }
 
     fn append_scalar(&mut self, label: &'static [u8], scalar: &Scalar) {
-        self.append_message(label, &scalar.to_bytes());
+        self.append_message(label, &scalar.to_be_bytes());
     }
 
     fn append_point(&mut self, label: &'static [u8], point: &G1Projective) {

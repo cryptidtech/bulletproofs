@@ -8,10 +8,10 @@ extern crate alloc;
 
 use super::HASH_DST;
 use alloc::vec::Vec;
-use bls12_381_plus::{ExpandMsgXof, G1Projective, Scalar};
-use digest::{ExtendableOutputDirty, Update, XofReader};
+use bls12_381_plus::{G1Projective, Scalar, elliptic_curve::hash2curve::ExpandMsgXof};
 use group::Curve;
-use sha3::{Sha3XofReader, Shake256};
+use digest::{ExtendableOutput, Update, XofReader};
+use sha3::{Shake256, Shake256Reader};
 
 /// Represents a pair of base points for Pedersen commitments.
 ///
@@ -55,7 +55,7 @@ impl Default for PedersenGens {
 /// orthogonal generators.  The sequence can be deterministically
 /// produced starting with an arbitrary point.
 struct GeneratorsChain {
-    reader: Sha3XofReader,
+    reader: Shake256Reader,
 }
 
 impl GeneratorsChain {
@@ -66,7 +66,7 @@ impl GeneratorsChain {
         shake.update(label);
 
         GeneratorsChain {
-            reader: shake.finalize_xof_dirty(),
+            reader: shake.finalize_xof()
         }
     }
 

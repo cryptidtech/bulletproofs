@@ -54,7 +54,7 @@ impl LinearProof {
         // Pedersen generator F, for committing to the secret value
         F: &G1Projective,
         // Pedersen generator B, for committing to the blinding value
-        B: &RistrettoPoint,
+        B: &G1Projective,
     ) -> Result<LinearProof, ProofError> {
         let mut n = b_vec.len();
         // All of the input vectors must have the same length.
@@ -76,10 +76,10 @@ impl LinearProof {
             transcript.append_scalar(b"b_i", b_i);
         }
         for G_i in &G_vec {
-            transcript.append_point(b"G_i", &G_i.compress());
+            transcript.append_point(b"G_i", &G_i);
         }
-        transcript.append_point(b"F", &F.compress());
-        transcript.append_point(b"B", &B.compress());
+        transcript.append_point(b"F", &F);
+        transcript.append_point(b"B", &B);
 
         // Create slices G, H, a, b backed by their respective
         // vectors. This lets us reslice as we compress the lengths
@@ -212,10 +212,10 @@ impl LinearProof {
             transcript.append_scalar(b"b_i", b_i);
         }
         for G_i in G {
-            transcript.append_point(b"G_i", &G_i.compress());
+            transcript.append_point(b"G_i", &G_i);
         }
-        transcript.append_point(b"F", &F.compress());
-        transcript.append_point(b"B", &B.compress());
+        transcript.append_point(b"F", &F);
+        transcript.append_point(b"B", &B);
 
         let (x_vec, x_inv_vec, b_0) = self.verification_scalars(n, transcript, b_vec)?;
         transcript.append_point(b"S", &self.S);
@@ -340,8 +340,8 @@ impl LinearProof {
     /// * two scalars \\(a, r\\).
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(self.serialized_size());
-        buf.extend_from_slice(&self.a.to_bytes());
-        buf.extend_from_slice(&self.r.to_bytes());
+        buf.extend_from_slice(&self.a.to_be_bytes());
+        buf.extend_from_slice(&self.r.to_be_bytes());
         buf.extend_from_slice(&self.S.to_affine().to_compressed());
         for (l, r) in self.L_vec.iter().zip(self.R_vec.iter()) {
             buf.extend_from_slice(&l.to_affine().to_compressed());
@@ -359,9 +359,9 @@ impl LinearProof {
     #[allow(dead_code)]
     pub(crate) fn to_bytes_iter(&self) -> impl Iterator<Item = u8> + '_ {
         self.a
-            .to_bytes()
+            .to_be_bytes()
             .into_iter()
-            .chain(self.r.to_bytes().into_iter())
+            .chain(self.r.to_be_bytes().into_iter())
             .chain(self.S.to_affine().to_compressed().into_iter())
             .chain(self.L_vec.iter().zip(self.R_vec.iter()).flat_map(|(l, r)| {
                 l.to_affine()
@@ -396,8 +396,8 @@ impl LinearProof {
 
         use crate::util::{read32, read48};
 
-        let a = Scalar::from_bytes(&read32(slice)).ok_or(ProofError::FormatError)?;
-        let r = Scalar::from_bytes(&read32(&slice[32..])).ok_or(ProofError::FormatError)?;
+        let a = Scalar::from_be_bytes(&read32(slice)).ok_or(ProofError::FormatError)?;
+        let r = Scalar::from_be_bytes(&read32(&slice[32..])).ok_or(ProofError::FormatError)?;
         let S = G1Affine::from_compressed(&read48(&slice[64..]))
             .map(G1Projective::from)
             .ok_or(ProofError::FormatError)?;

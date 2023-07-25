@@ -479,9 +479,9 @@ impl RangeProof {
         buf.extend_from_slice(&self.S.to_affine().to_compressed());
         buf.extend_from_slice(&self.T_1.to_affine().to_compressed());
         buf.extend_from_slice(&self.T_2.to_affine().to_compressed());
-        buf.extend_from_slice(&self.t_x.to_bytes());
-        buf.extend_from_slice(&self.t_x_blinding.to_bytes());
-        buf.extend_from_slice(&self.e_blinding.to_bytes());
+        buf.extend_from_slice(&self.t_x.to_be_bytes());
+        buf.extend_from_slice(&self.t_x_blinding.to_be_bytes());
+        buf.extend_from_slice(&self.e_blinding.to_be_bytes());
         buf.extend_from_slice(&self.ipp_proof.to_bytes());
         buf
     }
@@ -510,13 +510,13 @@ impl RangeProof {
             .ok_or(ProofError::FormatError)?;
 
         let mut pos = 48 * 4;
-        let t_x = Scalar::from_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
+        let t_x = Scalar::from_be_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
         pos += 32;
         let t_x_blinding =
-            Scalar::from_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
+            Scalar::from_be_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
         pos += 32;
         let e_blinding =
-            Scalar::from_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
+            Scalar::from_be_bytes(&read32(&slice[pos..])).ok_or(ProofError::FormatError)?;
         pos += 32;
 
         let ipp_proof = InnerProductProof::from_bytes(&slice[pos..])?;

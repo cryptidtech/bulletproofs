@@ -353,8 +353,8 @@ impl InnerProductProof {
     /// * two scalars \\(a, b\\).
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(self.serialized_size());
-        buf.extend_from_slice(&self.a.to_bytes());
-        buf.extend_from_slice(&self.b.to_bytes());
+        buf.extend_from_slice(&self.a.to_be_bytes());
+        buf.extend_from_slice(&self.b.to_be_bytes());
         for (l, r) in self.L_vec.iter().zip(self.R_vec.iter()) {
             buf.extend_from_slice(&l.to_affine().to_compressed());
             buf.extend_from_slice(&r.to_affine().to_compressed());
@@ -387,8 +387,8 @@ impl InnerProductProof {
 
         use crate::util::{read32, read48};
 
-        let a = Scalar::from_bytes(&read32(slice)).ok_or(ProofError::FormatError)?;
-        let b = Scalar::from_bytes(&read32(&slice[32..])).ok_or(ProofError::FormatError)?;
+        let a = Scalar::from_be_bytes(&read32(slice)).ok_or(ProofError::FormatError)?;
+        let b = Scalar::from_be_bytes(&read32(&slice[32..])).ok_or(ProofError::FormatError)?;
 
         let mut L_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
         let mut R_vec: Vec<G1Projective> = Vec::with_capacity(lg_n);
@@ -430,7 +430,7 @@ pub fn inner_product(a: &[Scalar], b: &[Scalar]) -> Scalar {
 mod tests {
     use super::*;
     use crate::HASH_DST;
-    use bls12_381_plus::ExpandMsgXof;
+    use bls12_381_plus::elliptic_curve::hash2curve::ExpandMsgXof;
 
     use crate::util;
     use group::ff::Field;
