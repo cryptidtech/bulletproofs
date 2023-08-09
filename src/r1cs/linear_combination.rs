@@ -1,6 +1,7 @@
 //! Definition of linear combinations.
 
-use bls12_381_plus::Scalar;
+use crate::inner_types::*;
+
 use std::iter::FromIterator;
 use std::ops::{Add, Mul, Neg, Sub};
 

@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 //! Definition of the proof struct.
 
-use bls12_381_plus::{G1Affine, G1Projective, Scalar};
-use group::Curve;
-
 use crate::errors::R1CSError;
+use crate::inner_types::*;
 use crate::inner_product_proof::InnerProductProof;
 use crate::util;
 use crate::CtOptionOps;

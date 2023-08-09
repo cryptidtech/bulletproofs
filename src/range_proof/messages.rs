@@ -4,15 +4,13 @@
 //! For more explanation of how the `dealer`, `party`, and `messages` modules orchestrate the protocol execution, see
 //! [the API for the aggregated multiparty computation protocol](../aggregation/index.html#api-for-the-aggregated-multiparty-computation-protocol).
 
-extern crate alloc;
-
 use super::CtOptionOps;
 use alloc::vec::Vec;
-use bls12_381_plus::{G1Projective, Scalar};
 use core::iter;
 use serde::{Deserialize, Serialize};
 
 use crate::generators::{BulletproofGens, PedersenGens};
+use crate::inner_types::*;
 
 /// A commitment to the bits of a party's value.
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]

@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 #![cfg_attr(feature = "docs", doc(include = "../../docs/range-proof-protocol.md"))]
 
-extern crate alloc;
 #[cfg(feature = "std")]
 extern crate rand;
 
@@ -13,9 +12,7 @@ use alloc::vec::Vec;
 
 use core::iter;
 
-use bls12_381_plus::{G1Affine, G1Projective, Scalar};
-use group::ff::Field;
-use group::Curve;
+use super::inner_types::*;
 use merlin::Transcript;
 
 use crate::errors::ProofError;
@@ -84,11 +81,9 @@ impl RangeProof {
     ///
     /// # Example
     /// ```
+    /// use bulletproofs::{inner_types::*, BulletproofGens, PedersenGens, RangeProof};
     /// use rand::thread_rng;
-    /// use bls12_381_plus::Scalar;
-    /// use group::ff::Field;
     /// use merlin::Transcript;
-    /// use bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
     ///
     /// # fn main() {
     /// // Generators for Pedersen commitments.  These can be selected
@@ -177,11 +172,9 @@ impl RangeProof {
     ///
     /// # Example
     /// ```
+    /// use bulletproofs::{inner_types::*, BulletproofGens, PedersenGens, RangeProof};
     /// use rand::thread_rng;
-    /// use bls12_381_plus::Scalar;
-    /// use group::ff::Field;
     /// use merlin::Transcript;
-    /// use bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
     ///
     /// # fn main() {
     /// // Generators for Pedersen commitments.  These can be selected

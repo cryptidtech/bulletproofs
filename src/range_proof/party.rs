@@ -10,17 +10,14 @@
 //! modules orchestrate the protocol execution, see the documentation
 //! in the [`aggregation`](::range_proof_mpc) module.
 
-extern crate alloc;
-
 use alloc::vec::Vec;
-use bls12_381_plus::{G1Projective, Scalar};
 use core::iter;
-use group::ff::Field;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
 use crate::errors::MPCError;
 use crate::generators::{BulletproofGens, PedersenGens};
+use crate::inner_types::*;
 use crate::util;
 
 #[cfg(feature = "std")]

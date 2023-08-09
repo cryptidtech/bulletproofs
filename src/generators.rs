@@ -4,11 +4,9 @@
 #![allow(non_snake_case)]
 #![deny(missing_docs)]
 
-extern crate alloc;
-
 use super::HASH_DST;
+use super::inner_types::*;
 use alloc::vec::Vec;
-use bls12_381_plus::{G1Projective, Scalar, elliptic_curve::hash2curve::ExpandMsgXof};
 use group::Curve;
 use digest::{ExtendableOutput, Update, XofReader};
 use sha3::{Shake256, Shake256Reader};
@@ -101,7 +99,7 @@ impl Iterator for GeneratorsChain {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::max_value(), None)
+        (usize::MAX, None)
     }
 }
 

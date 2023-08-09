@@ -19,9 +19,9 @@ description = "A pure-Rust implementation of Bulletproofs"
 edition = "2021"
 
 [dependencies]
-bls12_381_plus = "0.8.5"
+bls12_381_plus = { version = "0.8", optional = true }
+blstrs_plus = { version = "0.8", optional = true }
 group = "0.13"
-# subtle = { package = "subtle-ng", version = "2.4", default-features = false }
 subtle = { version = "2.4", default-features = false }
 sha3 = { version = "0.10", default-features = false }
 digest = { version = "0.10", default-features = false }
@@ -35,16 +35,18 @@ zeroize = "1"
 
 [dev-dependencies]
 hex = "0.4"
-criterion = "0.4"
+criterion = "0.5"
 bincode = "1"
 rand_chacha = "0.3"
 
 [features]
-default = ["std"]
-yoloproofs = []
-std = ["rand", "rand/std", "rand/std_rng", "thiserror"]
-nightly = ["subtle/nightly"]
+default = ["blst", "std"]
+blst = ["blstrs_plus"]
+rust = ["bls12_381_plus"]
 docs = ["nightly"]
+nightly = ["subtle/nightly"]
+std = ["rand", "rand/std", "rand/std_rng", "thiserror"]
+yoloproofs = []
 
 
 [[test]]

@@ -1,13 +1,10 @@
 #![allow(non_snake_case)]
 
-extern crate alloc;
-
 use super::CtOptionOps;
+use super::inner_types::*;
 use alloc::vec::Vec;
 
-use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use core::iter;
-use group::{ff::Field, Curve};
 use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};
 
@@ -95,9 +92,6 @@ impl LinearProof {
 
         // All of the input vectors must have a length that is a power of two.
         assert!(n.is_power_of_two());
-
-        transcript.innerproduct_domain_sep(n as u64);
-        transcript.append_point(b"C", C);
 
         let lg_n = n.next_power_of_two().trailing_zeros() as usize;
         let mut L_vec = Vec::with_capacity(lg_n);

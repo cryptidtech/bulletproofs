@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 
-use bls12_381_plus::{G1Projective, Scalar};
-use bulletproofs::r1cs::*;
-use bulletproofs::{BulletproofGens, PedersenGens};
-use group::ff::Field;
+use bulletproofs::{inner_types::*, r1cs::*, BulletproofGens, PedersenGens};
 use merlin::Transcript;
 use rand::seq::SliceRandom;
 use rand::thread_rng;

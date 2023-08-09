@@ -1,11 +1,9 @@
 #![deny(missing_docs)]
 #![allow(non_snake_case)]
 
-extern crate alloc;
-
+use super::inner_types::*;
 use alloc::vec;
 use alloc::vec::Vec;
-use bls12_381_plus::Scalar;
 use group::ff::Field;
 use zeroize::Zeroize;
 

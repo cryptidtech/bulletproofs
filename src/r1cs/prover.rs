@@ -1,9 +1,7 @@
 #![allow(non_snake_case)]
 
-use bls12_381_plus::{G1Projective, Scalar};
 use core::borrow::BorrowMut;
 use core::mem;
-use group::ff::Field;
 use merlin::Transcript;
 use zeroize::Zeroize;
 
@@ -14,6 +12,7 @@ use super::{
 
 use crate::errors::R1CSError;
 use crate::generators::{BulletproofGens, PedersenGens};
+use crate::inner_types::*;
 use crate::inner_product_proof::InnerProductProof;
 use crate::r1cs::Metrics;
 use crate::transcript::TranscriptProtocol;

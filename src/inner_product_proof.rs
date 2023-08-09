@@ -1,13 +1,11 @@
 #![allow(non_snake_case)]
 #![cfg_attr(feature = "docs", doc(include = "../docs/inner-product-protocol.md"))]
 
-extern crate alloc;
-
 use super::CtOptionOps;
+use super::inner_types::*;
 use alloc::borrow::Borrow;
 use alloc::vec::Vec;
 
-use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use core::iter;
 use group::Curve;
 use merlin::Transcript;
@@ -430,10 +428,9 @@ pub fn inner_product(a: &[Scalar], b: &[Scalar]) -> Scalar {
 mod tests {
     use super::*;
     use crate::HASH_DST;
-    use bls12_381_plus::elliptic_curve::hash2curve::ExpandMsgXof;
+    use crate::inner_types::*;
 
     use crate::util;
-    use group::ff::Field;
     use sha3::Shake256;
 
     fn test_helper_create(n: usize) {

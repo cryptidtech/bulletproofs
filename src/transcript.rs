@@ -1,7 +1,6 @@
 //! Defines a `TranscriptProtocol` trait for using a Merlin transcript.
 
-use bls12_381_plus::{G1Projective, Scalar};
-use group::Curve;
+use super::inner_types::*;
 use merlin::Transcript;
 
 use crate::errors::ProofError;

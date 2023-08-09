@@ -6,13 +6,11 @@
 
 use core::iter;
 
-extern crate alloc;
-
 use alloc::vec::Vec;
 
-use bls12_381_plus::{G1Projective, Scalar};
 use merlin::Transcript;
 
+use crate::inner_types::*;
 use crate::errors::MPCError;
 use crate::generators::{BulletproofGens, PedersenGens};
 use crate::inner_product_proof;

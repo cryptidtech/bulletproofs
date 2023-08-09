@@ -9,6 +9,28 @@
 
 extern crate alloc;
 
+#[cfg(all(not(feature = "rust"), not(feature = "blst")))]
+compile_error!("At least `rust` or `blst` must be selected");
+
+pub mod inner_types {
+    #[cfg(not(feature = "blst"))]
+    pub use bls12_381_plus::{
+        elliptic_curve::hash2curve::{ExpandMsgXof, ExpandMsgXmd},
+        ff::{Field, PrimeField},
+        group::{Curve, Group, GroupEncoding},
+        *,
+    };
+
+    #[cfg(feature = "blst")]
+    pub use blstrs_plus::{
+        elliptic_curve::hash2curve::{ExpandMsgXof, ExpandMsgXmd},
+        ff::{Field, PrimeField},
+        group::{Curve, Group, GroupEncoding},
+        pairing_lib::{MillerLoopResult, MultiMillerLoop},
+        *,
+    };
+}
+
 mod util;
 
 #[cfg_attr(feature = "docs", doc(include = "../docs/notes-intro.md"))]
